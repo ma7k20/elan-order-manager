@@ -1,0 +1,1 @@
+- [Clerk and artifact workflows](clerk-storage-workflow.md) — managed previews inject required routing variables; web auth uses same-origin Clerk cookies.

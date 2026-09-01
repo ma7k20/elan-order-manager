@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Arabic Order & Wallet Manager"
+description = "A production-ready Arabic RTL operations app for managing customers, multi-item orders, SHEIN purchases, shipments, payments, wallet accounting, profit, reports, and audit history for a small partner-run business."
+version = "1.0.0"
+id = "artifacts/arabic-order-manager"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25462
+
+[services.development]
+run = "pnpm --filter @workspace/arabic-order-manager run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/arabic-order-manager", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/arabic-order-manager/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25462"
+BASE_PATH = "/"

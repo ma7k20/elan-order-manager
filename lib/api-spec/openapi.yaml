@@ -3,20 +3,29 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Arabic RTL order, inventory, delivery, and financial management API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: dashboard
+  - name: customers
+  - name: orders
+  - name: payments
+  - name: purchases
+  - name: shipments
+  - name: wallet
+  - name: reports
+  - name: settings
+  - name: audit
+  - name: storage
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
-      summary: Health check
-      description: Returns server health status
+      summary: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +33,1013 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Get financial and operations dashboard
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+  /activity:
+    get:
+      operationId: getRecentActivity
+      tags: [dashboard]
+      summary: Get recent business activity
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
+  /customers:
+    get:
+      operationId: listCustomers
+      tags: [customers]
+      summary: List and search customers
+      parameters:
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: Customers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Customer"
+    post:
+      operationId: createCustomer
+      tags: [customers]
+      summary: Create a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerInput"
+      responses:
+        "201":
+          description: Customer created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+  /customers/{id}:
+    get:
+      operationId: getCustomer
+      tags: [customers]
+      summary: Get customer profile
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Customer profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerProfile"
+    patch:
+      operationId: updateCustomer
+      tags: [customers]
+      summary: Update a customer
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerUpdate"
+      responses:
+        "200":
+          description: Updated customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+    delete:
+      operationId: deleteCustomer
+      tags: [customers]
+      summary: Delete a non-financial customer record
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
+  /orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: List orders with operational filters
+      parameters:
+        - $ref: "#/components/parameters/Search"
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: paymentStatus
+          in: query
+          schema:
+            type: string
+        - name: deliveryStatus
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrderSummary"
+    post:
+      operationId: createOrder
+      tags: [orders]
+      summary: Create an order with multiple product items
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderInput"
+      responses:
+        "201":
+          description: Created order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      summary: Get order details
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+    patch:
+      operationId: updateOrder
+      tags: [orders]
+      summary: Update order information
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderUpdate"
+      responses:
+        "200":
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+    delete:
+      operationId: deleteOrder
+      tags: [orders]
+      summary: Delete a non-financial order
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
+  /orders/{id}/items/{itemId}:
+    patch:
+      operationId: updateOrderItem
+      tags: [orders]
+      summary: Update a product status, delivery state, or details
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderItemUpdate"
+      responses:
+        "200":
+          description: Updated order item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderItem"
+  /payments:
+    get:
+      operationId: listPayments
+      tags: [payments]
+      summary: List customer payments
+      parameters:
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: Payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Payment"
+    post:
+      operationId: createPayment
+      tags: [payments]
+      summary: Record a payment and wallet income atomically
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentInput"
+      responses:
+        "201":
+          description: Payment recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+  /payments/{id}/void:
+    post:
+      operationId: voidPayment
+      tags: [payments]
+      summary: Safely void a payment without deleting history
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoidInput"
+      responses:
+        "200":
+          description: Voided payment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+  /purchases:
+    get:
+      operationId: listPurchases
+      tags: [purchases]
+      summary: List SHEIN purchases
+      responses:
+        "200":
+          description: Purchases
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SheinPurchase"
+    post:
+      operationId: createPurchase
+      tags: [purchases]
+      summary: Create a SHEIN purchase and assign product items
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseInput"
+      responses:
+        "201":
+          description: Purchase created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SheinPurchase"
+  /purchases/{id}:
+    get:
+      operationId: getPurchase
+      tags: [purchases]
+      summary: Get SHEIN purchase details
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Purchase details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SheinPurchase"
+  /shipments:
+    get:
+      operationId: listShipments
+      tags: [shipments]
+      summary: List shipping shipments
+      responses:
+        "200":
+          description: Shipments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Shipment"
+    post:
+      operationId: createShipment
+      tags: [shipments]
+      summary: Create a shipment containing multiple SHEIN purchases
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShipmentInput"
+      responses:
+        "201":
+          description: Shipment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+  /shipments/{id}:
+    get:
+      operationId: getShipment
+      tags: [shipments]
+      summary: Get shipment details and receiving queue
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Shipment details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+    patch:
+      operationId: updateShipment
+      tags: [shipments]
+      summary: Update shipment status and receiving details
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShipmentUpdate"
+      responses:
+        "200":
+          description: Updated shipment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+  /wallet:
+    get:
+      operationId: getWallet
+      tags: [wallet]
+      summary: Get wallet balance and ledger
+      parameters:
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: Wallet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Wallet"
+    post:
+      operationId: createWalletTransaction
+      tags: [wallet]
+      summary: Add a manual income or expense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WalletTransactionInput"
+      responses:
+        "201":
+          description: Transaction created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletTransaction"
+  /wallet/adjust:
+    post:
+      operationId: createWalletAdjustment
+      tags: [wallet]
+      summary: Add an admin wallet adjustment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WalletAdjustmentInput"
+      responses:
+        "201":
+          description: Adjustment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletTransaction"
+  /reports/summary:
+    get:
+      operationId: getReportSummary
+      tags: [reports]
+      summary: Get financial and operational report summary
+      parameters:
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum: [today, week, month, custom]
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportSummary"
+  /reports/export:
+    get:
+      operationId: exportReport
+      tags: [reports]
+      summary: Export a report as CSV
+      parameters:
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [transactions, payments, expenses, purchases, profit, balances, missing]
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: CSV report
+          content:
+            text/csv:
+              schema:
+                type: string
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get business settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+    patch:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update business settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettingsUpdate"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+  /audit:
+    get:
+      operationId: listAuditLogs
+      tags: [audit]
+      summary: List audit history
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Audit logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditLog"
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [storage]
+      summary: Request a presigned upload URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadRequest"
+      responses:
+        "200":
+          description: Upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResponse"
+  /storage/objects/{objectPath}:
+    get:
+      operationId: getStoredObject
+      tags: [storage]
+      summary: Serve a stored private object
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stored file
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
 components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    Search:
+      name: search
+      in: query
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
   schemas:
     HealthStatus:
       type: object
       properties:
-        status:
-          type: string
-      required:
-        - status
-
+        status: { type: string }
+      required: [status]
+    Customer:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        phone: { type: string }
+        alternatePhone: { type: ["string", "null"] }
+        address: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        deliveryRequired: { type: boolean }
+        deliveryAddress: { type: ["string", "null"] }
+        totalOrders: { type: integer }
+        activeOrders: { type: integer }
+        totalCharged: { type: number }
+        totalPaid: { type: number }
+        remaining: { type: number }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, name, phone, deliveryRequired, totalOrders, activeOrders, totalCharged, totalPaid, remaining, createdAt, updatedAt]
+    CustomerInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        phone: { type: string, minLength: 1 }
+        alternatePhone: { type: string }
+        address: { type: string }
+        notes: { type: string }
+        deliveryRequired: { type: boolean }
+        deliveryAddress: { type: string }
+      required: [name, phone]
+    CustomerUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        phone: { type: string, minLength: 1 }
+        alternatePhone: { type: ["string", "null"] }
+        address: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        deliveryRequired: { type: boolean }
+        deliveryAddress: { type: ["string", "null"] }
+    CustomerProfile:
+      allOf:
+        - $ref: "#/components/schemas/Customer"
+        - type: object
+          properties:
+            orders:
+              type: array
+              items: { $ref: "#/components/schemas/OrderSummary" }
+            payments:
+              type: array
+              items: { $ref: "#/components/schemas/Payment" }
+          required: [orders, payments]
+    OrderItemInput:
+      type: object
+      properties:
+        imagePath: { type: ["string", "null"] }
+        name: { type: string, minLength: 1 }
+        productUrl: { type: ["string", "null"], format: uri }
+        quantity: { type: integer, minimum: 1 }
+        sellingPrice: { type: number, minimum: 0 }
+        commission: { type: number, minimum: 0 }
+        sheinCost: { type: number, minimum: 0 }
+        notes: { type: ["string", "null"] }
+      required: [name, quantity, sellingPrice, commission, sheinCost]
+    OrderInput:
+      type: object
+      properties:
+        customerId: { type: integer }
+        orderDate: { type: string, format: date }
+        deliveryMethod: { type: string, enum: [pickup, delivery] }
+        deliveryFee: { type: number, minimum: 0 }
+        deliveryAddress: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        items:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/OrderItemInput" }
+      required: [customerId, orderDate, deliveryMethod, items]
+    OrderUpdate:
+      type: object
+      properties:
+        orderDate: { type: string, format: date }
+        status: { type: string }
+        deliveryMethod: { type: string, enum: [pickup, delivery] }
+        deliveryFee: { type: number, minimum: 0 }
+        deliveryAddress: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+    OrderItemUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        imagePath: { type: ["string", "null"] }
+        productUrl: { type: ["string", "null"], format: uri }
+        quantity: { type: integer, minimum: 1 }
+        sellingPrice: { type: number, minimum: 0 }
+        commission: { type: number, minimum: 0 }
+        sheinCost: { type: number, minimum: 0 }
+        productStatus: { type: string }
+        deliveryStatus: { type: string }
+        notes: { type: ["string", "null"] }
+    OrderItem:
+      type: object
+      properties:
+        id: { type: integer }
+        orderId: { type: integer }
+        customerId: { type: integer }
+        imagePath: { type: ["string", "null"] }
+        name: { type: string }
+        productUrl: { type: ["string", "null"] }
+        quantity: { type: integer }
+        sellingPrice: { type: number }
+        commission: { type: number }
+        sheinCost: { type: number }
+        totalSelling: { type: number }
+        totalCommission: { type: number }
+        totalSheinCost: { type: number }
+        paid: { type: number }
+        remaining: { type: number }
+        productStatus: { type: string }
+        deliveryStatus: { type: string }
+        purchaseId: { type: ["integer", "null"] }
+        shipmentId: { type: ["integer", "null"] }
+        notes: { type: ["string", "null"] }
+      required: [id, orderId, customerId, name, quantity, sellingPrice, commission, sheinCost, totalSelling, totalCommission, totalSheinCost, paid, remaining, productStatus, deliveryStatus]
+    OrderSummary:
+      type: object
+      properties:
+        id: { type: integer }
+        orderNumber: { type: string }
+        customerId: { type: integer }
+        customerName: { type: string }
+        customerPhone: { type: string }
+        orderDate: { type: string, format: date }
+        status: { type: string }
+        deliveryMethod: { type: string }
+        deliveryFee: { type: number }
+        totalSelling: { type: number }
+        totalCommission: { type: number }
+        totalSheinCost: { type: number }
+        totalPaid: { type: number }
+        remaining: { type: number }
+        itemCount: { type: integer }
+        arrivedCount: { type: integer }
+        missingCount: { type: integer }
+        deliveryStatus: { type: string }
+      required: [id, orderNumber, customerId, customerName, customerPhone, orderDate, status, deliveryMethod, deliveryFee, totalSelling, totalCommission, totalSheinCost, totalPaid, remaining, itemCount, arrivedCount, missingCount, deliveryStatus]
+    Order:
+      allOf:
+        - $ref: "#/components/schemas/OrderSummary"
+        - type: object
+          properties:
+            deliveryAddress: { type: ["string", "null"] }
+            notes: { type: ["string", "null"] }
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/OrderItem" }
+          required: [items]
+    Payment:
+      type: object
+      properties:
+        id: { type: integer }
+        customerId: { type: integer }
+        customerName: { type: string }
+        orderId: { type: ["integer", "null"] }
+        amount: { type: number }
+        currency: { type: string }
+        type: { type: string }
+        method: { type: string }
+        paymentDate: { type: string, format: date }
+        notes: { type: ["string", "null"] }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, customerId, customerName, amount, currency, type, method, paymentDate, status, createdAt]
+    PaymentInput:
+      type: object
+      properties:
+        customerId: { type: integer }
+        orderId: { type: ["integer", "null"] }
+        amount: { type: number, minimum: 0.01 }
+        type: { type: string, enum: [initial_deposit, remaining, partial, refund, other] }
+        method: { type: string }
+        paymentDate: { type: string, format: date }
+        notes: { type: string }
+      required: [customerId, amount, type, method, paymentDate]
+    VoidInput:
+      type: object
+      properties:
+        reason: { type: string, minLength: 1 }
+      required: [reason]
+    SheinPurchase:
+      type: object
+      properties:
+        id: { type: integer }
+        invoiceNumber: { type: string }
+        purchaseDate: { type: string, format: date }
+        totalAmount: { type: number }
+        currency: { type: string }
+        invoicePath: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        status: { type: string }
+        itemIds:
+          type: array
+          items: { type: integer }
+        createdAt: { type: string, format: date-time }
+      required: [id, invoiceNumber, purchaseDate, totalAmount, currency, status, itemIds, createdAt]
+    PurchaseInput:
+      type: object
+      properties:
+        invoiceNumber: { type: string, minLength: 1 }
+        purchaseDate: { type: string, format: date }
+        totalAmount: { type: number, minimum: 0 }
+        currency: { type: string }
+        invoicePath: { type: ["string", "null"] }
+        notes: { type: string }
+        itemIds:
+          type: array
+          items: { type: integer }
+      required: [invoiceNumber, purchaseDate, totalAmount, currency, itemIds]
+    Shipment:
+      type: object
+      properties:
+        id: { type: integer }
+        shipmentNumber: { type: string }
+        company: { type: string }
+        trackingNumber: { type: ["string", "null"] }
+        shipmentDate: { type: string, format: date }
+        arrivalDate: { type: ["string", "null"], format: date }
+        shippingCost: { type: number }
+        currency: { type: string }
+        status: { type: string }
+        purchaseIds:
+          type: array
+          items: { type: integer }
+        receivingItems:
+          type: array
+          items: { $ref: "#/components/schemas/OrderItem" }
+        notes: { type: ["string", "null"] }
+      required: [id, shipmentNumber, company, shipmentDate, shippingCost, currency, status, purchaseIds, receivingItems]
+    ShipmentInput:
+      type: object
+      properties:
+        shipmentNumber: { type: string, minLength: 1 }
+        company: { type: string, minLength: 1 }
+        trackingNumber: { type: string }
+        shipmentDate: { type: string, format: date }
+        arrivalDate: { type: ["string", "null"], format: date }
+        shippingCost: { type: number, minimum: 0 }
+        currency: { type: string }
+        status: { type: string }
+        purchaseIds:
+          type: array
+          items: { type: integer }
+        notes: { type: string }
+      required: [shipmentNumber, company, shipmentDate, shippingCost, currency, purchaseIds]
+    ShipmentUpdate:
+      type: object
+      properties:
+        arrivalDate: { type: ["string", "null"], format: date }
+        shippingCost: { type: number, minimum: 0 }
+        status: { type: string }
+        notes: { type: ["string", "null"] }
+    WalletTransaction:
+      type: object
+      properties:
+        id: { type: integer }
+        type: { type: string }
+        amount: { type: number }
+        currency: { type: string }
+        category: { type: string }
+        description: { type: string }
+        transactionDate: { type: string, format: date }
+        relatedCustomerId: { type: ["integer", "null"] }
+        relatedOrderId: { type: ["integer", "null"] }
+        relatedPaymentId: { type: ["integer", "null"] }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, type, amount, currency, category, description, transactionDate, status, createdAt]
+    Wallet:
+      type: object
+      properties:
+        balance: { type: number }
+        totalIncome: { type: number }
+        totalExpenses: { type: number }
+        transactions:
+          type: array
+          items: { $ref: "#/components/schemas/WalletTransaction" }
+      required: [balance, totalIncome, totalExpenses, transactions]
+    WalletTransactionInput:
+      type: object
+      properties:
+        type: { type: string, enum: [income, expense] }
+        amount: { type: number, minimum: 0.01 }
+        category: { type: string }
+        description: { type: string, minLength: 1 }
+        transactionDate: { type: string, format: date }
+        notes: { type: string }
+      required: [type, amount, category, description, transactionDate]
+    WalletAdjustmentInput:
+      type: object
+      properties:
+        amount: { type: number, minimum: 0.01 }
+        direction: { type: string, enum: [increase, decrease] }
+        reason: { type: string, minLength: 1 }
+        transactionDate: { type: string, format: date }
+      required: [amount, direction, reason, transactionDate]
+    Dashboard:
+      type: object
+      properties:
+        walletBalance: { type: number }
+        totalIncome: { type: number }
+        totalExpenses: { type: number }
+        customerOwed: { type: number }
+        depositsHeld: { type: number }
+        activeOrders: { type: integer }
+        waitingProducts: { type: integer }
+        arrivedUndelivered: { type: integer }
+        shipmentsInTransit: { type: integer }
+        estimatedProfit: { type: number }
+        commission: { type: number }
+        recentOrders:
+          type: array
+          items: { $ref: "#/components/schemas/OrderSummary" }
+        recentPayments:
+          type: array
+          items: { $ref: "#/components/schemas/Payment" }
+        recentExpenses:
+          type: array
+          items: { $ref: "#/components/schemas/WalletTransaction" }
+        recentShipments:
+          type: array
+          items: { $ref: "#/components/schemas/Shipment" }
+        alerts:
+          type: array
+          items: { $ref: "#/components/schemas/Alert" }
+      required: [walletBalance, totalIncome, totalExpenses, customerOwed, depositsHeld, activeOrders, waitingProducts, arrivedUndelivered, shipmentsInTransit, estimatedProfit, commission, recentOrders, recentPayments, recentExpenses, recentShipments, alerts]
+    Alert:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        description: { type: string }
+        severity: { type: string }
+        href: { type: ["string", "null"] }
+      required: [id, title, description, severity]
+    Activity:
+      type: object
+      properties:
+        id: { type: integer }
+        action: { type: string }
+        entity: { type: string }
+        entityId: { type: integer }
+        description: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, action, entity, entityId, description, createdAt]
+    ReportSummary:
+      type: object
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        income: { type: number }
+        expenses: { type: number }
+        walletBalance: { type: number }
+        revenue: { type: number }
+        productCosts: { type: number }
+        commission: { type: number }
+        profit: { type: number }
+        customerBalances: { type: number }
+        missingProducts: { type: integer }
+        awaitingDelivery: { type: integer }
+        breakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              label: { type: string }
+              income: { type: number }
+              expenses: { type: number }
+            required: [label, income, expenses]
+      required: [from, to, income, expenses, walletBalance, revenue, productCosts, commission, profit, customerBalances, missingProducts, awaitingDelivery, breakdown]
+    Settings:
+      type: object
+      properties:
+        businessName: { type: string }
+        defaultCurrency: { type: string }
+        initialPaymentPercent: { type: number }
+        defaultDeliveryFee: { type: number }
+      required: [businessName, defaultCurrency, initialPaymentPercent, defaultDeliveryFee]
+    SettingsUpdate:
+      type: object
+      properties:
+        businessName: { type: string, minLength: 1 }
+        defaultCurrency: { type: string, minLength: 1 }
+        initialPaymentPercent: { type: number, minimum: 0, maximum: 100 }
+        defaultDeliveryFee: { type: number, minimum: 0 }
+    AuditLog:
+      type: object
+      properties:
+        id: { type: integer }
+        action: { type: string }
+        entity: { type: string }
+        entityId: { type: integer }
+        description: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, action, entity, entityId, description, createdAt]
+    UploadRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        size: { type: integer, minimum: 1 }
+        contentType: { type: string, minLength: 1 }
+      required: [name, size, contentType]
+    UploadResponse:
+      type: object
+      properties:
+        uploadURL: { type: string, format: uri }
+        objectPath: { type: string }
+      required: [uploadURL, objectPath]
