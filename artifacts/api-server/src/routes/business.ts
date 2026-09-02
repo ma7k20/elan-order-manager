@@ -120,7 +120,8 @@ async function orderDto(orderId: number) {
   const arrivedCount = mapped.filter((item) => ["arrived", "arrived_waiting", "delivered"].includes(item.productStatus)).length;
   const missingCount = mapped.filter((item) => item.productStatus === "not_arrived").length;
   const deliveredCount = mapped.filter((item) => item.deliveryStatus === "delivered").length;
-  const paymentShare = totalSelling ? paid / totalSelling : 0;
+  const orderTotal = totalSelling + n(rows[0].order.deliveryFee);
+  const paymentShare = orderTotal ? Math.min(1, paid / orderTotal) : 0;
   return {
     id: rows[0].order.id,
     orderNumber: rows[0].order.orderNumber,
@@ -237,12 +238,12 @@ router.get("/customers", async (req, res): Promise<void> => {
   const search = query.success ? query.data.search : undefined;
   const customers = await db.select().from(customersTable).where(search ? or(ilike(customersTable.name, `%${search}%`), ilike(customersTable.phone, `%${search}%`)) : undefined).orderBy(desc(customersTable.createdAt));
   const result = await Promise.all(customers.map(async (customer) => {
-    const orders = await db.select({ id: ordersTable.id }).from(ordersTable).where(eq(ordersTable.customerId, customer.id));
+    const orders = await db.select({ id: ordersTable.id, status: ordersTable.status }).from(ordersTable).where(eq(ordersTable.customerId, customer.id));
     const payments = await db.select({ amount: paymentsTable.amount }).from(paymentsTable).where(and(eq(paymentsTable.customerId, customer.id), eq(paymentsTable.status, "confirmed")));
     const charged = await db.select({ total: sql<number>`coalesce(sum(${orderItemsTable.sellingPrice} * ${orderItemsTable.quantity}), 0)` }).from(orderItemsTable).where(eq(orderItemsTable.customerId, customer.id));
     const totalCharged = n(charged[0]?.total) + n((await db.select({ fee: sql<number>`coalesce(sum(${ordersTable.deliveryFee}), 0)` }).from(ordersTable).where(eq(ordersTable.customerId, customer.id)))[0]?.fee);
     const totalPaid = payments.reduce((sum, p) => sum + n(p.amount), 0);
-    return { ...customer, totalOrders: orders.length, activeOrders: orders.length, totalCharged, totalPaid, remaining: Math.max(0, totalCharged - totalPaid) };
+    return { ...customer, totalOrders: orders.length, activeOrders: orders.filter((order) => !["completed", "cancelled"].includes(order.status)).length, totalCharged, totalPaid, remaining: Math.max(0, totalCharged - totalPaid) };
   }));
   res.json(result);
 });
@@ -275,12 +276,24 @@ router.patch("/customers/:id", async (req: AuthenticatedRequest, res): Promise<v
   const [customer] = await db.update(customersTable).set({ ...body.data, updatedAt: new Date() }).where(eq(customersTable.id, params.data.id)).returning();
   if (!customer) { res.status(404).json({ error: "Customer not found" }); return; }
   await audit(req.userId, "updated", "customer", customer.id, `تم تعديل الزبون ${customer.name}`);
-  res.json({ ...customer, totalOrders: 0, activeOrders: 0, totalCharged: 0, totalPaid: 0, remaining: 0 });
+  const orders = await db.select({ id: ordersTable.id, status: ordersTable.status }).from(ordersTable).where(eq(ordersTable.customerId, customer.id));
+  const payments = await db.select({ amount: paymentsTable.amount }).from(paymentsTable).where(and(eq(paymentsTable.customerId, customer.id), eq(paymentsTable.status, "confirmed")));
+  const charged = await db.select({ total: sql<number>`coalesce(sum(${orderItemsTable.sellingPrice} * ${orderItemsTable.quantity}), 0)` }).from(orderItemsTable).where(eq(orderItemsTable.customerId, customer.id));
+  const delivery = await db.select({ fee: sql<number>`coalesce(sum(${ordersTable.deliveryFee}), 0)` }).from(ordersTable).where(eq(ordersTable.customerId, customer.id));
+  const totalCharged = n(charged[0]?.total) + n(delivery[0]?.fee);
+  const totalPaid = payments.reduce((sum, payment) => sum + n(payment.amount), 0);
+  res.json({ ...customer, totalOrders: orders.length, activeOrders: orders.filter((order) => !["completed", "cancelled"].includes(order.status)).length, totalCharged, totalPaid, remaining: Math.max(0, totalCharged - totalPaid) });
 });
 
 router.delete("/customers/:id", async (req, res): Promise<void> => {
   const params = GetCustomerParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+  const linkedOrders = await db.select({ id: ordersTable.id }).from(ordersTable).where(eq(ordersTable.customerId, params.data.id)).limit(1);
+  const linkedPayments = await db.select({ id: paymentsTable.id }).from(paymentsTable).where(eq(paymentsTable.customerId, params.data.id)).limit(1);
+  if (linkedOrders.length || linkedPayments.length) {
+    res.status(409).json({ error: "لا يمكن حذف عميل مرتبط بطلبات أو سجلات مالية. عدّل البيانات بدلاً من حذفها." });
+    return;
+  }
   const [deleted] = await db.delete(customersTable).where(eq(customersTable.id, params.data.id)).returning();
   if (!deleted) { res.status(404).json({ error: "Customer not found" }); return; }
   res.sendStatus(204);
@@ -355,6 +368,13 @@ router.patch("/orders/:id", async (req: AuthenticatedRequest, res): Promise<void
 router.delete("/orders/:id", async (req, res): Promise<void> => {
   const params = GetOrderParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+  const linkedPayments = await db.select({ id: paymentsTable.id }).from(paymentsTable).where(eq(paymentsTable.orderId, params.data.id)).limit(1);
+  const linkedWalletTransactions = await db.select({ id: walletTransactionsTable.id }).from(walletTransactionsTable).where(eq(walletTransactionsTable.relatedOrderId, params.data.id)).limit(1);
+  const linkedPurchases = await db.select({ id: purchaseItemsTable.id }).from(purchaseItemsTable).innerJoin(orderItemsTable, eq(purchaseItemsTable.itemId, orderItemsTable.id)).where(eq(orderItemsTable.orderId, params.data.id)).limit(1);
+  if (linkedPayments.length || linkedWalletTransactions.length || linkedPurchases.length) {
+    res.status(409).json({ error: "لا يمكن حذف طلب مرتبط بدفعات أو مشتريات أو حركات محفظة. استخدم التعديل أو الإلغاء." });
+    return;
+  }
   const [deleted] = await db.delete(ordersTable).where(eq(ordersTable.id, params.data.id)).returning();
   if (!deleted) { res.status(404).json({ error: "Order not found" }); return; }
   res.sendStatus(204);

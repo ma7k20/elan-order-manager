@@ -1,0 +1,24 @@
+kind = "mobile"
+previewPath = "/elan-mobile/"
+title = "ELAN Mobile"
+description = "تطبيق Android خاص بشريكي ELAN لإدارة العملاء والطلبات والدفعات والشحنات والمحفظة مع مزامنة مباشرة مع الخادم المشترك."
+version = "1.0.0"
+id = "artifacts/elan-mobile"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/elan-mobile/" ]
+localPort = 20769
+
+[services.development]
+run = "pnpm --filter @workspace/elan-mobile run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/elan-mobile", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/elan-mobile", "run", "serve" ]
+
+[services.env]
+PORT = "20769"
+BASE_PATH = "/elan-mobile/"
