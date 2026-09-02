@@ -1,0 +1,46 @@
+name: Build ELAN APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - elan-source.tar.gz
+      - .github/workflows/build-apk.yml
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout build inputs
+        uses: actions/checkout@v4
+      - name: Extract ELAN source
+        run: tar -xzf elan-source.tar.gz
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.4
+      - name: Install JavaScript dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build release APK
+        env:
+          EXPO_PUBLIC_DOMAIN: arabic-order-and-wallet-manager--fadialaa6407.replit.app
+          EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
+        run: bash artifacts/elan-mobile/scripts/build-apk.sh
+      - name: Upload ELAN APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ELAN-release-apk
+          path: artifacts/elan-mobile/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
