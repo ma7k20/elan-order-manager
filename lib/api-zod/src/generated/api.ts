@@ -781,6 +781,69 @@ export const GetPurchaseResponse = zod.object({
 
 
 /**
+ * @summary Update a SHEIN purchase
+ */
+export const UpdatePurchaseParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+
+export const updatePurchaseBodyTotalAmountMin = 0;
+
+
+
+
+export const UpdatePurchaseBody = zod.object({
+  "invoiceNumber": zod.string().min(1).optional(),
+  "purchaseDate": zod.coerce.date().optional(),
+  "totalAmount": zod.number().min(updatePurchaseBodyTotalAmountMin).optional(),
+  "currency": zod.string().min(1).optional(),
+  "notes": zod.string().nullish()
+})
+
+export const UpdatePurchaseResponse = zod.object({
+  "id": zod.number().int(),
+  "invoiceNumber": zod.string(),
+  "purchaseDate": zod.coerce.date(),
+  "totalAmount": zod.number(),
+  "currency": zod.string(),
+  "invoicePath": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "status": zod.string(),
+  "itemIds": zod.array(zod.number().int()),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Safely cancel a SHEIN purchase without deleting history
+ */
+export const CancelPurchaseParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+
+
+
+export const CancelPurchaseBody = zod.object({
+  "reason": zod.string().min(1)
+})
+
+export const CancelPurchaseResponse = zod.object({
+  "id": zod.number().int(),
+  "invoiceNumber": zod.string(),
+  "purchaseDate": zod.coerce.date(),
+  "totalAmount": zod.number(),
+  "currency": zod.string(),
+  "invoicePath": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "status": zod.string(),
+  "itemIds": zod.array(zod.number().int()),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
  * @summary List shipping shipments
  */
 export const ListShipmentsResponseItem = zod.object({
@@ -931,18 +994,78 @@ export const UpdateShipmentParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
+
+
 export const updateShipmentBodyShippingCostMin = 0;
 
 
 
+
 export const UpdateShipmentBody = zod.object({
+  "shipmentNumber": zod.string().min(1).optional(),
+  "company": zod.string().min(1).optional(),
+  "trackingNumber": zod.string().nullish(),
+  "shipmentDate": zod.coerce.date().optional(),
   "arrivalDate": zod.coerce.date().nullish(),
   "shippingCost": zod.number().min(updateShipmentBodyShippingCostMin).optional(),
+  "currency": zod.string().min(1).optional(),
   "status": zod.string().optional(),
+  "purchaseIds": zod.array(zod.number().int()).optional(),
   "notes": zod.string().nullish()
 })
 
 export const UpdateShipmentResponse = zod.object({
+  "id": zod.number().int(),
+  "shipmentNumber": zod.string(),
+  "company": zod.string(),
+  "trackingNumber": zod.string().nullish(),
+  "shipmentDate": zod.coerce.date(),
+  "arrivalDate": zod.coerce.date().nullish(),
+  "shippingCost": zod.number(),
+  "currency": zod.string(),
+  "status": zod.string(),
+  "purchaseIds": zod.array(zod.number().int()),
+  "receivingItems": zod.array(zod.object({
+  "id": zod.number().int(),
+  "orderId": zod.number().int(),
+  "customerId": zod.number().int(),
+  "imagePath": zod.string().nullish(),
+  "name": zod.string(),
+  "productUrl": zod.string().nullish(),
+  "quantity": zod.number().int(),
+  "sellingPrice": zod.number(),
+  "commission": zod.number(),
+  "sheinCost": zod.number(),
+  "totalSelling": zod.number(),
+  "totalCommission": zod.number(),
+  "totalSheinCost": zod.number(),
+  "paid": zod.number(),
+  "remaining": zod.number(),
+  "productStatus": zod.string(),
+  "deliveryStatus": zod.string(),
+  "purchaseId": zod.number().int().nullish(),
+  "shipmentId": zod.number().int().nullish(),
+  "notes": zod.string().nullish()
+})),
+  "notes": zod.string().nullish()
+})
+
+
+/**
+ * @summary Safely cancel a shipment without deleting history
+ */
+export const CancelShipmentParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+
+
+
+export const CancelShipmentBody = zod.object({
+  "reason": zod.string().min(1)
+})
+
+export const CancelShipmentResponse = zod.object({
   "id": zod.number().int(),
   "shipmentNumber": zod.string(),
   "company": zod.string(),

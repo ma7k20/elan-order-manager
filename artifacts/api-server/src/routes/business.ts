@@ -22,6 +22,8 @@ import {
   CreateShipmentBody,
   CreateWalletAdjustmentBody,
   CreateWalletTransactionBody,
+  CancelPurchaseBody,
+  CancelShipmentBody,
   GetCustomerParams,
   GetDashboardResponse,
   GetOrderParams,
@@ -40,6 +42,7 @@ import {
   UpdateOrderItemBody,
   UpdateOrderItemParams,
   UpdateOrderParams,
+  UpdatePurchaseBody,
   UpdateSettingsBody,
   UpdateShipmentBody,
   UpdateShipmentParams,
@@ -478,6 +481,65 @@ router.get("/purchases/:id", async (req, res): Promise<void> => {
   res.json({ ...purchase, totalAmount: n(purchase.totalAmount), itemIds: links.map((l) => l.itemId) });
 });
 
+router.patch("/purchases/:id", async (req: AuthenticatedRequest, res): Promise<void> => {
+  const params = GetPurchaseParams.safeParse(req.params);
+  const body = UpdatePurchaseBody.safeParse(req.body);
+  if (!params.success || !body.success) { res.status(400).json({ error: "Invalid purchase data" }); return; }
+  const result = await db.transaction(async (tx) => {
+    const [existing] = await tx.select().from(sheinPurchasesTable).where(eq(sheinPurchasesTable.id, params.data.id));
+    if (!existing) return null;
+    if (existing.status === "cancelled") throw new Error("Cancelled purchases cannot be edited");
+    const [purchase] = await tx.update(sheinPurchasesTable).set({
+      invoiceNumber: body.data.invoiceNumber,
+      purchaseDate: dateOnly(body.data.purchaseDate),
+      totalAmount: body.data.totalAmount,
+      currency: body.data.currency,
+      notes: body.data.notes,
+      updatedAt: new Date(),
+    }).where(eq(sheinPurchasesTable.id, existing.id)).returning();
+    const delta = body.data.totalAmount === undefined ? 0 : body.data.totalAmount - n(existing.totalAmount);
+    if (delta !== 0) {
+      await tx.insert(walletTransactionsTable).values({
+        type: delta > 0 ? "expense" : "income",
+        amount: Math.abs(delta),
+        currency: body.data.currency ?? existing.currency,
+        category: "shein_purchase_adjustment",
+        description: `تعديل شراء شي إن ${purchase.invoiceNumber}`,
+        transactionDate: dateOnly(body.data.purchaseDate) ?? existing.purchaseDate,
+        createdBy: req.userId,
+      });
+    }
+    await tx.insert(auditLogsTable).values({ userId: req.userId, action: "updated", entity: "shein_purchase", entityId: purchase.id, description: `تم تعديل فاتورة شي إن ${purchase.invoiceNumber}` });
+    const links = await tx.select({ itemId: purchaseItemsTable.itemId }).from(purchaseItemsTable).where(eq(purchaseItemsTable.purchaseId, purchase.id));
+    return { ...purchase, totalAmount: n(purchase.totalAmount), itemIds: links.map((l) => l.itemId) };
+  });
+  if (!result) { res.status(404).json({ error: "Purchase not found" }); return; }
+  res.json(result);
+});
+
+router.post("/purchases/:id/cancel", async (req: AuthenticatedRequest, res): Promise<void> => {
+  const params = GetPurchaseParams.safeParse(req.params);
+  const body = CancelPurchaseBody.safeParse(req.body);
+  if (!params.success || !body.success) { res.status(400).json({ error: "A cancellation reason is required" }); return; }
+  const result = await db.transaction(async (tx) => {
+    const [existing] = await tx.select().from(sheinPurchasesTable).where(eq(sheinPurchasesTable.id, params.data.id));
+    if (!existing) return { kind: "missing" as const };
+    if (existing.status === "cancelled") return { kind: "already" as const, purchase: existing };
+    const shipmentLink = await tx.select({ id: shipmentPurchasesTable.id }).from(shipmentPurchasesTable).where(eq(shipmentPurchasesTable.purchaseId, existing.id)).limit(1);
+    if (shipmentLink.length) return { kind: "linked" as const };
+    const [purchase] = await tx.update(sheinPurchasesTable).set({ status: "cancelled", notes: `${existing.notes ? `${existing.notes}\n` : ""}إلغاء: ${body.data.reason}`, updatedAt: new Date() }).where(eq(sheinPurchasesTable.id, existing.id)).returning();
+    const links = await tx.select({ itemId: purchaseItemsTable.itemId }).from(purchaseItemsTable).where(eq(purchaseItemsTable.purchaseId, purchase.id));
+    if (links.length) await tx.update(orderItemsTable).set({ productStatus: "requested", updatedAt: new Date() }).where(sql`${orderItemsTable.id} in (${sql.join(links.map((link) => sql`${link.itemId}`), sql`, `)})`);
+    await tx.insert(walletTransactionsTable).values({ type: "income", amount: n(existing.totalAmount), currency: existing.currency, category: "shein_purchase_reversal", description: `إلغاء شراء شي إن ${existing.invoiceNumber}`, transactionDate: existing.purchaseDate, createdBy: req.userId });
+    await tx.insert(auditLogsTable).values({ userId: req.userId, action: "cancelled", entity: "shein_purchase", entityId: purchase.id, description: `تم إلغاء فاتورة شي إن ${purchase.invoiceNumber}: ${body.data.reason}` });
+    return { kind: "ok" as const, purchase: { ...purchase, totalAmount: n(purchase.totalAmount), itemIds: links.map((l) => l.itemId) } };
+  });
+  if (result.kind === "missing") { res.status(404).json({ error: "Purchase not found" }); return; }
+  if (result.kind === "already") { res.status(409).json({ error: "Purchase is already cancelled" }); return; }
+  if (result.kind === "linked") { res.status(409).json({ error: "لا يمكن إلغاء شراء مرتبط بشحنة. ألغِ الشحنة أولاً." }); return; }
+  res.json(result.purchase);
+});
+
 router.get("/shipments", async (_req, res): Promise<void> => {
   const shipments = await db.select().from(shipmentsTable).orderBy(desc(shipmentsTable.createdAt));
   const result = await Promise.all(shipments.map(async (shipment) => {
@@ -525,17 +587,65 @@ router.patch("/shipments/:id", async (req: AuthenticatedRequest, res): Promise<v
   const params = UpdateShipmentParams.safeParse(req.params);
   const body = UpdateShipmentBody.safeParse(req.body);
   if (!params.success || !body.success) { res.status(400).json({ error: "Invalid shipment data" }); return; }
-  const [shipment] = await db.update(shipmentsTable).set({
-    arrivalDate: dateOnly(body.data.arrivalDate),
-    shippingCost: body.data.shippingCost,
-    status: body.data.status,
-    notes: body.data.notes,
-    updatedAt: new Date(),
-  }).where(eq(shipmentsTable.id, params.data.id)).returning();
-  if (!shipment) { res.status(404).json({ error: "Shipment not found" }); return; }
-  await audit(req.userId, "updated", "shipment", shipment.id, `تم تحديث الشحنة ${shipment.shipmentNumber}`);
-  const links = await db.select({ purchaseId: shipmentPurchasesTable.purchaseId }).from(shipmentPurchasesTable).where(eq(shipmentPurchasesTable.shipmentId, shipment.id));
-  res.json({ ...shipment, shippingCost: n(shipment.shippingCost), purchaseIds: links.map((l) => l.purchaseId), receivingItems: [] });
+  const result = await db.transaction(async (tx) => {
+    const [existing] = await tx.select().from(shipmentsTable).where(eq(shipmentsTable.id, params.data.id));
+    if (!existing) return null;
+    if (existing.status === "cancelled") throw new Error("Cancelled shipments cannot be edited");
+    const [shipment] = await tx.update(shipmentsTable).set({
+      shipmentNumber: body.data.shipmentNumber,
+      company: body.data.company,
+      trackingNumber: body.data.trackingNumber,
+      shipmentDate: dateOnly(body.data.shipmentDate),
+      arrivalDate: dateOnly(body.data.arrivalDate),
+      shippingCost: body.data.shippingCost,
+      currency: body.data.currency,
+      status: body.data.status,
+      notes: body.data.notes,
+      updatedAt: new Date(),
+    }).where(eq(shipmentsTable.id, params.data.id)).returning();
+    if (body.data.purchaseIds) {
+      await tx.delete(shipmentPurchasesTable).where(eq(shipmentPurchasesTable.shipmentId, shipment.id));
+      if (body.data.purchaseIds.length) await tx.insert(shipmentPurchasesTable).values(body.data.purchaseIds.map((purchaseId) => ({ shipmentId: shipment.id, purchaseId })));
+    }
+    const delta = body.data.shippingCost === undefined ? 0 : body.data.shippingCost - n(existing.shippingCost);
+    if (delta !== 0) {
+      await tx.insert(walletTransactionsTable).values({
+        type: delta > 0 ? "expense" : "income",
+        amount: Math.abs(delta),
+        currency: body.data.currency ?? existing.currency,
+        category: "shipping_adjustment",
+        description: `تعديل شحنة ${shipment.shipmentNumber}`,
+        transactionDate: dateOnly(body.data.shipmentDate) ?? existing.shipmentDate,
+        createdBy: req.userId,
+      });
+    }
+    await tx.insert(auditLogsTable).values({ userId: req.userId, action: "updated", entity: "shipment", entityId: shipment.id, description: `تم تحديث الشحنة ${shipment.shipmentNumber}` });
+    const links = await tx.select({ purchaseId: shipmentPurchasesTable.purchaseId }).from(shipmentPurchasesTable).where(eq(shipmentPurchasesTable.shipmentId, shipment.id));
+    return { ...shipment, shippingCost: n(shipment.shippingCost), purchaseIds: links.map((l) => l.purchaseId), receivingItems: [] };
+  });
+  if (!result) { res.status(404).json({ error: "Shipment not found" }); return; }
+  res.json(result);
+});
+
+router.post("/shipments/:id/cancel", async (req: AuthenticatedRequest, res): Promise<void> => {
+  const params = GetShipmentParams.safeParse(req.params);
+  const body = CancelShipmentBody.safeParse(req.body);
+  if (!params.success || !body.success) { res.status(400).json({ error: "A cancellation reason is required" }); return; }
+  const result = await db.transaction(async (tx) => {
+    const [existing] = await tx.select().from(shipmentsTable).where(eq(shipmentsTable.id, params.data.id));
+    if (!existing) return { kind: "missing" as const };
+    if (existing.status === "cancelled") return { kind: "already" as const };
+    const [shipment] = await tx.update(shipmentsTable).set({ status: "cancelled", notes: `${existing.notes ? `${existing.notes}\n` : ""}إلغاء: ${body.data.reason}`, updatedAt: new Date() }).where(eq(shipmentsTable.id, existing.id)).returning();
+    if (n(existing.shippingCost) > 0) {
+      await tx.insert(walletTransactionsTable).values({ type: "income", amount: n(existing.shippingCost), currency: existing.currency, category: "shipping_reversal", description: `إلغاء شحنة ${existing.shipmentNumber}`, transactionDate: existing.shipmentDate, createdBy: req.userId });
+    }
+    await tx.insert(auditLogsTable).values({ userId: req.userId, action: "cancelled", entity: "shipment", entityId: shipment.id, description: `تم إلغاء الشحنة ${shipment.shipmentNumber}: ${body.data.reason}` });
+    const links = await tx.select({ purchaseId: shipmentPurchasesTable.purchaseId }).from(shipmentPurchasesTable).where(eq(shipmentPurchasesTable.shipmentId, shipment.id));
+    return { kind: "ok" as const, shipment: { ...shipment, shippingCost: n(shipment.shippingCost), purchaseIds: links.map((l) => l.purchaseId), receivingItems: [] } };
+  });
+  if (result.kind === "missing") { res.status(404).json({ error: "Shipment not found" }); return; }
+  if (result.kind === "already") { res.status(409).json({ error: "Shipment is already cancelled" }); return; }
+  res.json(result.shipment);
 });
 
 router.get("/wallet", async (req, res): Promise<void> => {

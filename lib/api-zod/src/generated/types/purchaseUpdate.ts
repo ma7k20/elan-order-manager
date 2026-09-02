@@ -6,22 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface ShipmentUpdate {
+export interface PurchaseUpdate {
   /** @minLength 1 */
-  shipmentNumber?: string;
-  /** @minLength 1 */
-  company?: string;
-  /** @nullable */
-  trackingNumber?: string | null;
-  shipmentDate?: Date;
-  /** @nullable */
-  arrivalDate?: Date | null;
+  invoiceNumber?: string;
+  purchaseDate?: Date;
   /** @minimum 0 */
-  shippingCost?: number;
+  totalAmount?: number;
   /** @minLength 1 */
   currency?: string;
-  status?: string;
-  purchaseIds?: number[];
   /** @nullable */
   notes?: string | null;
 }

@@ -45,6 +45,7 @@ import type {
   Payment,
   PaymentInput,
   PurchaseInput,
+  PurchaseUpdate,
   ReportSummary,
   Settings,
   SettingsUpdate,
@@ -1602,6 +1603,150 @@ export function useGetPurchase<TData = Awaited<ReturnType<typeof getPurchase>>, 
 
 
 
+export const getUpdatePurchaseUrl = (id: number,) => {
+
+
+
+
+  return `/api/purchases/${id}`
+}
+
+/**
+ * @summary Update a SHEIN purchase
+ */
+export const updatePurchase = async (id: number,
+    purchaseUpdate: PurchaseUpdate, options?: Parameters<typeof customFetch>[1]): Promise<SheinPurchase> => {
+
+  return customFetch<SheinPurchase>(getUpdatePurchaseUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(purchaseUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdatePurchaseMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePurchase>>, TError,{id: number;data: BodyType<PurchaseUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePurchase>>, TError,{id: number;data: BodyType<PurchaseUpdate>}, TContext> => {
+
+const mutationKey = ['updatePurchase'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePurchase>>, {id: number;data: BodyType<PurchaseUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updatePurchase(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePurchaseMutationResult = NonNullable<Awaited<ReturnType<typeof updatePurchase>>>
+    export type UpdatePurchaseMutationBody = BodyType<PurchaseUpdate>
+    export type UpdatePurchaseMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update a SHEIN purchase
+ */
+export const useUpdatePurchase = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePurchase>>, TError,{id: number;data: BodyType<PurchaseUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePurchase>>,
+        TError,
+        {id: number;data: BodyType<PurchaseUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdatePurchaseMutationOptions(options));
+    }
+
+export const getCancelPurchaseUrl = (id: number,) => {
+
+
+
+
+  return `/api/purchases/${id}/cancel`
+}
+
+/**
+ * @summary Safely cancel a SHEIN purchase without deleting history
+ */
+export const cancelPurchase = async (id: number,
+    voidInput: VoidInput, options?: Parameters<typeof customFetch>[1]): Promise<SheinPurchase> => {
+
+  return customFetch<SheinPurchase>(getCancelPurchaseUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(voidInput)
+  }
+);}
+
+
+
+
+
+export const getCancelPurchaseMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelPurchase>>, TError,{id: number;data: BodyType<VoidInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelPurchase>>, TError,{id: number;data: BodyType<VoidInput>}, TContext> => {
+
+const mutationKey = ['cancelPurchase'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelPurchase>>, {id: number;data: BodyType<VoidInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  cancelPurchase(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelPurchaseMutationResult = NonNullable<Awaited<ReturnType<typeof cancelPurchase>>>
+    export type CancelPurchaseMutationBody = BodyType<VoidInput>
+    export type CancelPurchaseMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Safely cancel a SHEIN purchase without deleting history
+ */
+export const useCancelPurchase = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelPurchase>>, TError,{id: number;data: BodyType<VoidInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelPurchase>>,
+        TError,
+        {id: number;data: BodyType<VoidInput>},
+        TContext
+      > => {
+      return useMutation(getCancelPurchaseMutationOptions(options));
+    }
+
 export const getListShipmentsUrl = () => {
 
 
@@ -1897,6 +2042,78 @@ export const useUpdateShipment = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdateShipmentMutationOptions(options));
+    }
+
+export const getCancelShipmentUrl = (id: number,) => {
+
+
+
+
+  return `/api/shipments/${id}/cancel`
+}
+
+/**
+ * @summary Safely cancel a shipment without deleting history
+ */
+export const cancelShipment = async (id: number,
+    voidInput: VoidInput, options?: Parameters<typeof customFetch>[1]): Promise<Shipment> => {
+
+  return customFetch<Shipment>(getCancelShipmentUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(voidInput)
+  }
+);}
+
+
+
+
+
+export const getCancelShipmentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelShipment>>, TError,{id: number;data: BodyType<VoidInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelShipment>>, TError,{id: number;data: BodyType<VoidInput>}, TContext> => {
+
+const mutationKey = ['cancelShipment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelShipment>>, {id: number;data: BodyType<VoidInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  cancelShipment(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelShipmentMutationResult = NonNullable<Awaited<ReturnType<typeof cancelShipment>>>
+    export type CancelShipmentMutationBody = BodyType<VoidInput>
+    export type CancelShipmentMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Safely cancel a shipment without deleting history
+ */
+export const useCancelShipment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelShipment>>, TError,{id: number;data: BodyType<VoidInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelShipment>>,
+        TError,
+        {id: number;data: BodyType<VoidInput>},
+        TContext
+      > => {
+      return useMutation(getCancelShipmentMutationOptions(options));
     }
 
 export const getGetWalletUrl = (params?: GetWalletParams,) => {

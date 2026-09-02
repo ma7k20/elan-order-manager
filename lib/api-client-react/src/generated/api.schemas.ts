@@ -276,6 +276,18 @@ export interface PurchaseInput {
   itemIds: number[];
 }
 
+export interface PurchaseUpdate {
+  /** @minLength 1 */
+  invoiceNumber?: string;
+  purchaseDate?: string;
+  /** @minimum 0 */
+  totalAmount?: number;
+  /** @minLength 1 */
+  currency?: string;
+  /** @nullable */
+  notes?: string | null;
+}
+
 export interface Shipment {
   id: number;
   shipmentNumber: string;
@@ -312,11 +324,21 @@ export interface ShipmentInput {
 }
 
 export interface ShipmentUpdate {
+  /** @minLength 1 */
+  shipmentNumber?: string;
+  /** @minLength 1 */
+  company?: string;
+  /** @nullable */
+  trackingNumber?: string | null;
+  shipmentDate?: string;
   /** @nullable */
   arrivalDate?: string | null;
   /** @minimum 0 */
   shippingCost?: number;
+  /** @minLength 1 */
+  currency?: string;
   status?: string;
+  purchaseIds?: number[];
   /** @nullable */
   notes?: string | null;
 }

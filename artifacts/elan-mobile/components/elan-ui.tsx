@@ -126,8 +126,9 @@ export function Pill({ children, tone = 'muted' }: { children: ReactNode; tone?:
   return <Text style={[styles.pill, { backgroundColor: palette.backgroundColor, color: palette.color }]}>{children}</Text>;
 }
 
-export function Money({ value }: { value: number }) {
-  return <Text>{`${Number(value || 0).toFixed(2)} ₪`}</Text>;
+export function Money({ value, currency = 'ILS' }: { value: number; currency?: string }) {
+  const symbol = currency === 'ILS' ? '₪' : currency;
+  return <Text>{`${Number(value || 0).toFixed(2)} ${symbol}`}</Text>;
 }
 
 export function PrimaryButton({
@@ -136,16 +137,18 @@ export function PrimaryButton({
   disabled = false,
   variant = 'primary',
   icon,
+  style,
 }: {
   title: string;
   onPress: () => void;
   disabled?: boolean;
-  variant?: 'primary' | 'secondary' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   icon?: keyof typeof Feather.glyphMap;
+  style?: object;
 }) {
   const colors = useColors();
-  const backgroundColor = variant === 'primary' ? colors.primary : variant === 'secondary' ? colors.secondary : 'transparent';
-  const textColor = variant === 'primary' ? colors.primaryForeground : colors.foreground;
+  const backgroundColor = variant === 'primary' ? colors.primary : variant === 'secondary' ? colors.secondary : variant === 'danger' ? colors.destructive : 'transparent';
+  const textColor = variant === 'primary' || variant === 'danger' ? colors.primaryForeground : colors.foreground;
   return (
     <Pressable
       onPress={onPress}
@@ -154,6 +157,7 @@ export function PrimaryButton({
         styles.button,
         { backgroundColor, borderColor: colors.border, opacity: disabled ? 0.5 : pressed ? 0.78 : 1 },
         variant === 'ghost' && { borderWidth: 0 },
+        style,
       ]}
     >
       {icon ? <Feather name={icon} size={17} color={textColor} /> : null}

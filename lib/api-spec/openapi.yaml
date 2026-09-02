@@ -346,6 +346,45 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SheinPurchase"
+    patch:
+      operationId: updatePurchase
+      tags: [purchases]
+      summary: Update a SHEIN purchase
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseUpdate"
+      responses:
+        "200":
+          description: Updated purchase
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SheinPurchase"
+  /purchases/{id}/cancel:
+    post:
+      operationId: cancelPurchase
+      tags: [purchases]
+      summary: Safely cancel a SHEIN purchase without deleting history
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoidInput"
+      responses:
+        "200":
+          description: Cancelled purchase
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SheinPurchase"
   /shipments:
     get:
       operationId: listShipments
@@ -406,6 +445,26 @@ paths:
       responses:
         "200":
           description: Updated shipment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+  /shipments/{id}/cancel:
+    post:
+      operationId: cancelShipment
+      tags: [shipments]
+      summary: Safely cancel a shipment without deleting history
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoidInput"
+      responses:
+        "200":
+          description: Cancelled shipment
           content:
             application/json:
               schema:
@@ -844,6 +903,15 @@ components:
           type: array
           items: { type: integer }
       required: [invoiceNumber, purchaseDate, totalAmount, currency, itemIds]
+    PurchaseUpdate:
+      type: object
+      properties:
+        invoiceNumber: { type: string, minLength: 1 }
+        purchaseDate: { type: string, format: date }
+        totalAmount: { type: number, minimum: 0 }
+        currency: { type: string, minLength: 1 }
+        notes: { type: ["string", "null"] }
+      minProperties: 1
     Shipment:
       type: object
       properties:
@@ -883,9 +951,17 @@ components:
     ShipmentUpdate:
       type: object
       properties:
+        shipmentNumber: { type: string, minLength: 1 }
+        company: { type: string, minLength: 1 }
+        trackingNumber: { type: ["string", "null"] }
+        shipmentDate: { type: string, format: date }
         arrivalDate: { type: ["string", "null"], format: date }
         shippingCost: { type: number, minimum: 0 }
+        currency: { type: string, minLength: 1 }
         status: { type: string }
+        purchaseIds:
+          type: array
+          items: { type: integer }
         notes: { type: ["string", "null"] }
     WalletTransaction:
       type: object

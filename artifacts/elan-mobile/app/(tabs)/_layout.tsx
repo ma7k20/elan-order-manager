@@ -57,6 +57,11 @@ function ClassicTabLayout() {
       <Tabs.Screen name="orders" options={{ title: 'الطلبات', tabBarIcon: ({ color }) => <Feather name="package" size={21} color={color} /> }} />
       <Tabs.Screen name="customers" options={{ title: 'العملاء', tabBarIcon: ({ color }) => <Feather name="users" size={21} color={color} /> }} />
       <Tabs.Screen name="finance" options={{ title: 'المالية', tabBarIcon: ({ color }) => <Feather name="credit-card" size={21} color={color} /> }} />
+      <Tabs.Screen name="more" options={{ title: 'المزيد', tabBarIcon: ({ color }) => <Feather name="grid" size={21} color={color} /> }} />
+      <Tabs.Screen name="purchases" options={{ href: null }} />
+      <Tabs.Screen name="shipments" options={{ href: null }} />
+      <Tabs.Screen name="reports" options={{ href: null }} />
+      <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>
   );
 }

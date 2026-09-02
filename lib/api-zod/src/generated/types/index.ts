@@ -39,6 +39,7 @@ export * from './payment';
 export * from './paymentInput';
 export * from './paymentInputType';
 export * from './purchaseInput';
+export * from './purchaseUpdate';
 export * from './reportSummary';
 export * from './reportSummaryBreakdownItem';
 export * from './searchParameter';

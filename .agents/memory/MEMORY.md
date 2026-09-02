@@ -1,1 +1,2 @@
 - [Clerk and artifact workflows](clerk-storage-workflow.md) — managed previews inject required routing variables; web auth uses same-origin Clerk cookies.
+- [Safe financial cancellation](safe-financial-cancellation.md) — cancel purchases and shipments with compensating ledger entries; never erase financial history.
