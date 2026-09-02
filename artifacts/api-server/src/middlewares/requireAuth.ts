@@ -5,7 +5,7 @@ export type AuthenticatedRequest = Request & { userId: string };
 
 const allowedEmails = new Set(
   (process.env.ALLOWED_CLERK_EMAILS ??
-    "fadialaa640@gmail.com,alkronzmahmoud.2005@gmail.com")
+    "fadialaa6407@gmail.com,alkronzmahmoud.2005@gmail.com")
     .split(",")
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean),
