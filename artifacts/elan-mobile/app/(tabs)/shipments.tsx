@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import { useCancelShipment, useCreateShipment, useListPurchases, useListShipments, useUpdateShipment } from '@workspace/api-client-react';
+import { useCancelShipment, useCreateShipment, useDeleteShipment, useListPurchases, useListShipments, useUpdateShipment } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -20,6 +20,7 @@ export default function ShipmentsScreen() {
   const create = useCreateShipment();
   const update = useUpdateShipment();
   const cancel = useCancelShipment();
+  const remove = useDeleteShipment();
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [shipmentNumber, setShipmentNumber] = useState('');
@@ -53,12 +54,13 @@ export default function ShipmentsScreen() {
     { text: 'تراجع', style: 'cancel' },
     { text: 'إلغاء الشحنة', style: 'destructive', onPress: () => cancel.mutate({ id, data: { reason: 'إلغاء معتمد من تطبيق الهاتف' } }, { onSuccess: () => queryClient.invalidateQueries(), onError: () => Alert.alert('تعذر الإلغاء', 'الشحنة ملغاة بالفعل أو تعذر الوصول إلى الخادم.') }) },
   ]);
+  const confirmDelete = (id: number, label: string) => Alert.alert('حذف الشحنة نهائياً؟', `سيُحذف ${label} وقيد تكلفة الشحن، وستصبح فواتيرها متاحة للربط من جديد.`, [{ text: 'تراجع', style: 'cancel' }, { text: 'حذف نهائي', style: 'destructive', onPress: () => remove.mutate({ id }, { onSuccess: () => queryClient.invalidateQueries(), onError: () => Alert.alert('تعذر الحذف', 'حاول مرة أخرى.') }) }]);
 
   if (shipments.isLoading || purchases.isLoading) return <View style={{ flex: 1, backgroundColor: colors.background }}><LoadingState /></View>;
   if (shipments.isError || purchases.isError) return <View style={{ flex: 1, backgroundColor: colors.background, padding: 18 }}><ErrorState onRetry={() => { shipments.refetch(); purchases.refetch(); }} /></View>;
   return (
     <>
-      <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 18, paddingBottom: 110 }} refreshControl={<RefreshControl refreshing={shipments.isFetching} onRefresh={() => shipments.refetch()} tintColor={colors.primary} />}>
+      <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 30, paddingBottom: 110 }} refreshControl={<RefreshControl refreshing={shipments.isFetching} onRefresh={() => shipments.refetch()} tintColor={colors.primary} />}>
         <Header title="الشحنات" subtitle="التتبع والتكاليف وحالة الوصول" action={<Pressable onPress={() => { close(); setOpen(true); }} style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}><Feather name="plus" size={21} color={colors.primaryForeground} /></Pressable>} />
         <Pressable onPress={() => router.back()} style={{ flexDirection: 'row', gap: 6, alignItems: 'center', marginBottom: 14 }}><Feather name="arrow-right" size={17} color={colors.primary} /><Text style={{ color: colors.primary, fontWeight: '700' }}>العودة لإدارة العمل</Text></Pressable>
         {items.length ? items.map((shipment) => (
@@ -70,6 +72,7 @@ export default function ShipmentsScreen() {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 14 }}><Text style={{ color: colors.mutedForeground }}>{shipment.purchaseIds.length} فاتورة</Text><Text style={{ color: colors.primary, fontWeight: '800' }}><Money value={shipment.shippingCost} currency={shipment.currency} /></Text></View>
             {shipment.trackingNumber ? <Text style={{ color: colors.foreground, marginTop: 10, textAlign: 'right' }}>تتبع: {shipment.trackingNumber}</Text> : null}
             {shipment.status !== 'cancelled' ? <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}><PrimaryButton title="تعديل" onPress={() => openEdit(shipment)} variant="secondary" icon="edit-2" style={{ flex: 1 }} /><PrimaryButton title="إلغاء آمن" onPress={() => confirmCancel(shipment.id, shipment.shipmentNumber)} variant="danger" icon="x-circle" style={{ flex: 1 }} disabled={cancel.isPending} /></View> : null}
+            <PrimaryButton title="حذف نهائي" onPress={() => confirmDelete(shipment.id, shipment.shipmentNumber)} variant="danger" icon="trash-2" style={{ marginTop: 8 }} disabled={remove.isPending} />
           </Card>
         )) : <EmptyState title="لا توجد شحنات" description="أنشئ شحنة واربط بها فواتير SHEIN." icon="truck" />}
       </ScrollView>

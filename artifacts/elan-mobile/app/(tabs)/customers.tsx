@@ -81,7 +81,7 @@ export default function CustomersScreen() {
   const items = customers.data || [];
   return (
     <>
-      <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 18, paddingBottom: 110 }} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={customers.isFetching} onRefresh={() => customers.refetch()} tintColor={colors.primary} />}>
+      <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 30, paddingBottom: 110 }} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={customers.isFetching} onRefresh={() => customers.refetch()} tintColor={colors.primary} />}>
         <Header title="العملاء" subtitle="بيانات التواصل والفواتير في مكان واحد" action={<Pressable onPress={openNew} style={({ pressed }) => ({ backgroundColor: colors.primary, width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.75 : 1 })}><Feather name="plus" size={21} color={colors.primaryForeground} /></Pressable>} />
         {items.length ? items.map((customer) => (
           <Card key={customer.id}>

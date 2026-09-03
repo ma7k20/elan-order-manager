@@ -76,7 +76,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Link href="/orders/new" data-testid="link-quick-new-order" className="hidden items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 sm:flex"><ClipboardList size={15}/> طلب جديد</Link>
           </div>
         </header>
-        <main className="mx-auto max-w-[1520px] px-4 py-6 sm:px-7 sm:py-8">{children}</main>
+        <main className="mx-auto max-w-[1520px] px-4 pb-6 pt-10 sm:px-7 sm:pb-8 sm:pt-12">{children}</main>
       </div>
     </div>
   );

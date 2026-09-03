@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import {
   useCancelPurchase,
   useCreatePurchase,
+  useDeletePurchase,
   getGetOrderQueryKey,
   useGetOrder,
   useListOrders,
@@ -27,6 +28,7 @@ export default function PurchasesScreen() {
   const create = useCreatePurchase();
   const update = useUpdatePurchase();
   const cancel = useCancelPurchase();
+  const remove = useDeletePurchase();
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [invoiceNumber, setInvoiceNumber] = useState('');
@@ -93,13 +95,14 @@ export default function PurchasesScreen() {
       }) },
     ],
   );
+  const confirmDelete = (id: number, label: string) => Alert.alert('حذف الفاتورة نهائياً؟', `سيُحذف ${label} وقيده المالي. لا يمكن الحذف إذا كانت ضمن شحنة.`, [{ text: 'تراجع', style: 'cancel' }, { text: 'حذف نهائي', style: 'destructive', onPress: () => remove.mutate({ id }, { onSuccess: () => queryClient.invalidateQueries(), onError: () => Alert.alert('تعذر الحذف', 'احذف الشحنة المرتبطة أولاً، ثم حاول مجدداً.') }) }]);
 
   if (purchases.isLoading || orders.isLoading) return <View style={{ flex: 1, backgroundColor: colors.background }}><LoadingState /></View>;
   if (purchases.isError || orders.isError) return <View style={{ flex: 1, backgroundColor: colors.background, padding: 18 }}><ErrorState onRetry={() => { purchases.refetch(); orders.refetch(); }} /></View>;
 
   return (
     <>
-      <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 18, paddingBottom: 110 }} refreshControl={<RefreshControl refreshing={purchases.isFetching} onRefresh={() => purchases.refetch()} tintColor={colors.primary} />}>
+      <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 30, paddingBottom: 110 }} refreshControl={<RefreshControl refreshing={purchases.isFetching} onRefresh={() => purchases.refetch()} tintColor={colors.primary} />}>
         <Header title="مشتريات SHEIN" subtitle="الفواتير المشتركة وربط منتجات الطلبات" action={<Pressable onPress={() => { close(); setOpen(true); }} style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}><Feather name="plus" size={21} color={colors.primaryForeground} /></Pressable>} />
         <Pressable onPress={() => router.back()} style={{ flexDirection: 'row', gap: 6, alignItems: 'center', marginBottom: 14 }}><Feather name="arrow-right" size={17} color={colors.primary} /><Text style={{ color: colors.primary, fontWeight: '700' }}>العودة لإدارة العمل</Text></Pressable>
         {items.length ? items.map((purchase) => (
@@ -119,6 +122,7 @@ export default function PurchasesScreen() {
               <PrimaryButton title="تعديل" onPress={() => openEdit(purchase)} variant="secondary" icon="edit-2" style={{ flex: 1 }} />
               <PrimaryButton title="إلغاء آمن" onPress={() => confirmCancel(purchase.id, purchase.invoiceNumber)} variant="danger" icon="x-circle" style={{ flex: 1 }} disabled={cancel.isPending} />
             </View> : null}
+            <PrimaryButton title="حذف نهائي" onPress={() => confirmDelete(purchase.id, purchase.invoiceNumber)} variant="danger" icon="trash-2" style={{ marginTop: 8 }} disabled={remove.isPending} />
           </Card>
         )) : <EmptyState title="لا توجد مشتريات" description="سجّل أول فاتورة SHEIN واربطها بمنتجات الطلبات." icon="shopping-bag" />}
       </ScrollView>

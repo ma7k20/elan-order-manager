@@ -226,7 +226,7 @@ export function formatDate(value?: string | Date | null) {
 
 export const styles = StyleSheet.create({
   screen: { flex: 1 },
-  screenContent: { flex: 1, paddingHorizontal: 18, paddingTop: 18 },
+  screenContent: { flex: 1, paddingHorizontal: 18, paddingTop: 30 },
   scrollContent: { paddingBottom: 100 },
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   logoMark: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },

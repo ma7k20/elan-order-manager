@@ -21,7 +21,7 @@ export default function DashboardScreen() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
-      contentContainerStyle={{ padding: 18, paddingBottom: 110 }}
+      contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 30, paddingBottom: 110 }}
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={dashboard.isFetching} onRefresh={() => dashboard.refetch()} tintColor={colors.primary} />}
     >

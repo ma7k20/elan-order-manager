@@ -17,7 +17,7 @@ export default function ReportsScreen() {
   if (report.isError || !report.data) return <View style={{ flex: 1, backgroundColor: colors.background, padding: 18 }}><ErrorState onRetry={() => report.refetch()} /></View>;
   const data = report.data;
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 18, paddingBottom: 110 }} refreshControl={<RefreshControl refreshing={report.isFetching} onRefresh={() => report.refetch()} tintColor={colors.primary} />}>
+    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 30, paddingBottom: 110 }} refreshControl={<RefreshControl refreshing={report.isFetching} onRefresh={() => report.refetch()} tintColor={colors.primary} />}>
       <Header title="التقارير" subtitle={`${formatDate(data.from)} — ${formatDate(data.to)}`} />
       <Pressable onPress={() => router.back()} style={{ flexDirection: 'row', gap: 6, alignItems: 'center', marginBottom: 14 }}><Feather name="arrow-right" size={17} color={colors.primary} /><Text style={{ color: colors.primary, fontWeight: '700' }}>العودة لإدارة العمل</Text></Pressable>
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>{ranges.map((item) => <Pressable key={item.value} onPress={() => setRange(item.value)} style={{ flex: 1, paddingVertical: 11, borderRadius: 12, alignItems: 'center', backgroundColor: range === item.value ? colors.primary : colors.card, borderWidth: 1, borderColor: range === item.value ? colors.primary : colors.border }}><Text style={{ color: range === item.value ? colors.primaryForeground : colors.foreground, fontWeight: '800' }}>{item.label}</Text></Pressable>)}</View>

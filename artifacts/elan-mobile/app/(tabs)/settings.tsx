@@ -108,7 +108,7 @@ export default function SettingsScreen() {
   if (settings.isError) return <View style={{ flex: 1, backgroundColor: colors.background, padding: 18 }}><ErrorState onRetry={() => settings.refetch()} /></View>;
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 18, paddingBottom: 110 }}>
+    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 30, paddingBottom: 110 }}>
       <Header title="الإعدادات" subtitle="إعدادات النشاط والحسابات المسموح لها بالدخول" />
       <Pressable onPress={() => router.back()} style={{ flexDirection: 'row', gap: 6, alignItems: 'center', marginBottom: 14 }}>
         <Feather name="arrow-right" size={17} color={colors.primary} />

@@ -710,6 +710,53 @@ export const VoidPaymentResponse = zod.object({
 
 
 /**
+ * @summary Update a customer payment and its wallet entry
+ */
+export const UpdatePaymentParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const updatePaymentBodyAmountMin = 0.01;
+
+
+
+export const UpdatePaymentBody = zod.object({
+  "customerId": zod.number().int().optional(),
+  "orderId": zod.number().int().nullish(),
+  "amount": zod.number().min(updatePaymentBodyAmountMin).optional(),
+  "type": zod.enum(['initial_deposit', 'remaining', 'partial', 'refund', 'other']).optional(),
+  "method": zod.string().optional(),
+  "paymentDate": zod.coerce.date().optional(),
+  "notes": zod.string().nullish()
+})
+
+export const UpdatePaymentResponse = zod.object({
+  "id": zod.number().int(),
+  "customerId": zod.number().int(),
+  "customerName": zod.string(),
+  "orderId": zod.number().int().nullish(),
+  "amount": zod.number(),
+  "currency": zod.string(),
+  "type": zod.string(),
+  "method": zod.string(),
+  "paymentDate": zod.coerce.date(),
+  "notes": zod.string().nullish(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a payment and its linked wallet entry
+ */
+export const DeletePaymentParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeletePaymentResponse = zod.void()
+
+
+/**
  * @summary List SHEIN purchases
  */
 export const ListPurchasesResponseItem = zod.object({
@@ -778,6 +825,16 @@ export const GetPurchaseResponse = zod.object({
   "itemIds": zod.array(zod.number().int()),
   "createdAt": zod.coerce.date()
 })
+
+
+/**
+ * @summary Delete an unshipped SHEIN purchase
+ */
+export const DeletePurchaseParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeletePurchaseResponse = zod.void()
 
 
 /**
@@ -988,6 +1045,16 @@ export const GetShipmentResponse = zod.object({
 
 
 /**
+ * @summary Delete a shipment and unlink its purchases
+ */
+export const DeleteShipmentParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteShipmentResponse = zod.void()
+
+
+/**
  * @summary Update shipment status and receiving details
  */
 export const UpdateShipmentParams = zod.object({
@@ -1192,6 +1259,54 @@ export const CreateWalletAdjustmentResponse = zod.object({
   "status": zod.string(),
   "createdAt": zod.coerce.date()
 })
+
+
+/**
+ * @summary Update a manual wallet transaction
+ */
+export const UpdateWalletTransactionParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const updateWalletTransactionBodyAmountMin = 0.01;
+
+
+
+
+
+export const UpdateWalletTransactionBody = zod.object({
+  "type": zod.enum(['income', 'expense']).optional(),
+  "amount": zod.number().min(updateWalletTransactionBodyAmountMin).optional(),
+  "category": zod.string().min(1).optional(),
+  "description": zod.string().min(1).optional(),
+  "transactionDate": zod.coerce.date().optional(),
+  "notes": zod.string().nullish()
+})
+
+export const UpdateWalletTransactionResponse = zod.object({
+  "id": zod.number().int(),
+  "type": zod.string(),
+  "amount": zod.number(),
+  "currency": zod.string(),
+  "category": zod.string(),
+  "description": zod.string(),
+  "transactionDate": zod.coerce.date(),
+  "relatedCustomerId": zod.number().int().nullish(),
+  "relatedOrderId": zod.number().int().nullish(),
+  "relatedPaymentId": zod.number().int().nullish(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a manual wallet transaction
+ */
+export const DeleteWalletTransactionParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteWalletTransactionResponse = zod.void()
 
 
 /**

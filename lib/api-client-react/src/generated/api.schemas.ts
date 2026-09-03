@@ -243,6 +243,30 @@ export interface PaymentInput {
   notes?: string;
 }
 
+export type PaymentUpdateType = typeof PaymentUpdateType[keyof typeof PaymentUpdateType];
+
+
+export const PaymentUpdateType = {
+  initial_deposit: 'initial_deposit',
+  remaining: 'remaining',
+  partial: 'partial',
+  refund: 'refund',
+  other: 'other',
+} as const;
+
+export interface PaymentUpdate {
+  customerId?: number;
+  /** @nullable */
+  orderId?: number | null;
+  /** @minimum 0.01 */
+  amount?: number;
+  type?: PaymentUpdateType;
+  method?: string;
+  paymentDate?: string;
+  /** @nullable */
+  notes?: string | null;
+}
+
 export interface VoidInput {
   /** @minLength 1 */
   reason: string;
@@ -385,6 +409,27 @@ export interface WalletTransactionInput {
   description: string;
   transactionDate: string;
   notes?: string;
+}
+
+export type WalletTransactionUpdateType = typeof WalletTransactionUpdateType[keyof typeof WalletTransactionUpdateType];
+
+
+export const WalletTransactionUpdateType = {
+  income: 'income',
+  expense: 'expense',
+} as const;
+
+export interface WalletTransactionUpdate {
+  type?: WalletTransactionUpdateType;
+  /** @minimum 0.01 */
+  amount?: number;
+  /** @minLength 1 */
+  category?: string;
+  /** @minLength 1 */
+  description?: string;
+  transactionDate?: string;
+  /** @nullable */
+  notes?: string | null;
 }
 
 export type WalletAdjustmentInputDirection = typeof WalletAdjustmentInputDirection[keyof typeof WalletAdjustmentInputDirection];

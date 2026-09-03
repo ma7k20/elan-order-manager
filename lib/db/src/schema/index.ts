@@ -141,6 +141,8 @@ export const walletTransactionsTable = pgTable("wallet_transactions", {
   relatedCustomerId: integer("related_customer_id").references(() => customersTable.id),
   relatedOrderId: integer("related_order_id").references(() => ordersTable.id),
   relatedPaymentId: integer("related_payment_id").references(() => paymentsTable.id),
+  relatedPurchaseId: integer("related_purchase_id").references(() => sheinPurchasesTable.id),
+  relatedShipmentId: integer("related_shipment_id").references(() => shipmentsTable.id),
   status: varchar("status", { length: 20 }).notNull().default("confirmed"),
   notes: text("notes"),
   ...auditFields,

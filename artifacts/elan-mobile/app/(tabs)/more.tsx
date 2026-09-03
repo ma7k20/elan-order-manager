@@ -16,7 +16,7 @@ export default function MoreScreen() {
   const colors = useColors();
   const router = useRouter();
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 18, paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
+    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 30, paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
       <Header title="إدارة العمل" subtitle="كل أدوات التشغيل المتقدمة من الهاتف" />
       {links.map((item) => (
         <Pressable key={item.route} onPress={() => router.push(item.route as never)} style={({ pressed }) => ({ opacity: pressed ? 0.72 : 1 })}>

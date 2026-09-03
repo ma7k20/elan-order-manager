@@ -301,6 +301,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Payment"
+  /payments/{id}:
+    patch:
+      operationId: updatePayment
+      tags: [payments]
+      summary: Update a customer payment and its wallet entry
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentUpdate"
+      responses:
+        "200":
+          description: Updated payment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+    delete:
+      operationId: deletePayment
+      tags: [payments]
+      summary: Delete a payment and its linked wallet entry
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Payment deleted
   /purchases:
     get:
       operationId: listPurchases
@@ -346,6 +375,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SheinPurchase"
+    delete:
+      operationId: deletePurchase
+      tags: [purchases]
+      summary: Delete an unshipped SHEIN purchase
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Purchase deleted
     patch:
       operationId: updatePurchase
       tags: [purchases]
@@ -430,6 +468,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Shipment"
+    delete:
+      operationId: deleteShipment
+      tags: [shipments]
+      summary: Delete a shipment and unlink its purchases
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Shipment deleted
     patch:
       operationId: updateShipment
       tags: [shipments]
@@ -518,6 +565,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/WalletTransaction"
+  /wallet/{id}:
+    patch:
+      operationId: updateWalletTransaction
+      tags: [wallet]
+      summary: Update a manual wallet transaction
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WalletTransactionUpdate"
+      responses:
+        "200":
+          description: Updated transaction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletTransaction"
+    delete:
+      operationId: deleteWalletTransaction
+      tags: [wallet]
+      summary: Delete a manual wallet transaction
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Transaction deleted
   /reports/summary:
     get:
       operationId: getReportSummary
@@ -869,6 +945,17 @@ components:
         paymentDate: { type: string, format: date }
         notes: { type: string }
       required: [customerId, amount, type, method, paymentDate]
+    PaymentUpdate:
+      type: object
+      properties:
+        customerId: { type: integer }
+        orderId: { type: ["integer", "null"] }
+        amount: { type: number, minimum: 0.01 }
+        type: { type: string, enum: [initial_deposit, remaining, partial, refund, other] }
+        method: { type: string }
+        paymentDate: { type: string, format: date }
+        notes: { type: ["string", "null"] }
+      minProperties: 1
     VoidInput:
       type: object
       properties:
@@ -999,6 +1086,16 @@ components:
         transactionDate: { type: string, format: date }
         notes: { type: string }
       required: [type, amount, category, description, transactionDate]
+    WalletTransactionUpdate:
+      type: object
+      properties:
+        type: { type: string, enum: [income, expense] }
+        amount: { type: number, minimum: 0.01 }
+        category: { type: string, minLength: 1 }
+        description: { type: string, minLength: 1 }
+        transactionDate: { type: string, format: date }
+        notes: { type: ["string", "null"] }
+      minProperties: 1
     WalletAdjustmentInput:
       type: object
       properties:

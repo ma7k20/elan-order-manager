@@ -1,10 +1,10 @@
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowDownLeft, ArrowUpLeft, Check, ChevronLeft, CircleAlert, CircleDollarSign, Download, Filter, Package, Plus, Receipt, ShoppingCart, TrendingUp, Truck, UserRound, WalletCards } from "lucide-react";
+import { ArrowDownLeft, ArrowUpLeft, Check, ChevronLeft, CircleAlert, CircleDollarSign, Download, Edit3, Filter, Package, Plus, Receipt, ShoppingCart, Trash2, TrendingUp, Truck, UserRound, WalletCards } from "lucide-react";
 import {
   getExportReportQueryKey, getGetCustomerQueryKey, getGetDashboardQueryKey, getGetOrderQueryKey, getGetReportSummaryQueryKey, getGetSettingsQueryKey, getGetWalletQueryKey, getListAuditLogsQueryKey, getListCustomersQueryKey, getListOrdersQueryKey, getListPaymentsQueryKey, getListPurchasesQueryKey, getListShipmentsQueryKey,
-  useCreateCustomer, useCreateOrder, useCreatePayment, useCreatePurchase, useCreateShipment, useCreateWalletAdjustment, useCreateWalletTransaction, useGetCustomer, useGetDashboard, useGetOrder, useGetReportSummary, useGetSettings, useGetWallet, useListAuditLogs, useListCustomers, useListOrders, useListPayments, useListPurchases, useListShipments, useUpdateCustomer, useUpdateOrderItem, useUpdateSettings, useUpdateShipment, useExportReport
+  useCreateCustomer, useCreateOrder, useCreatePayment, useCreatePurchase, useCreateShipment, useCreateWalletAdjustment, useCreateWalletTransaction, useDeletePayment, useDeletePurchase, useDeleteShipment, useDeleteWalletTransaction, useGetCustomer, useGetDashboard, useGetOrder, useGetReportSummary, useGetSettings, useGetWallet, useListAuditLogs, useListCustomers, useListOrders, useListPayments, useListPurchases, useListShipments, useUpdateCustomer, useUpdateOrderItem, useUpdatePayment, useUpdatePurchase, useUpdateSettings, useUpdateShipment, useUpdateWalletTransaction, useExportReport
 } from "@workspace/api-client-react";
 import { AppShell } from "@/components/app-shell";
 import { AccountManagement } from "@/components/account-management";

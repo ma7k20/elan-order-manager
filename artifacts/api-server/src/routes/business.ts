@@ -22,6 +22,10 @@ import {
   CreateShipmentBody,
   CreateWalletAdjustmentBody,
   CreateWalletTransactionBody,
+  DeletePaymentParams,
+  DeletePurchaseParams,
+  DeleteShipmentParams,
+  DeleteWalletTransactionParams,
   CancelPurchaseBody,
   CancelShipmentBody,
   GetCustomerParams,
@@ -42,10 +46,14 @@ import {
   UpdateOrderItemBody,
   UpdateOrderItemParams,
   UpdateOrderParams,
+  UpdatePaymentBody,
+  UpdatePaymentParams,
   UpdatePurchaseBody,
   UpdateSettingsBody,
   UpdateShipmentBody,
   UpdateShipmentParams,
+  UpdateWalletTransactionBody,
+  UpdateWalletTransactionParams,
   VoidPaymentBody,
   VoidPaymentParams,
 } from "@workspace/api-zod";
@@ -439,6 +447,54 @@ router.post("/payments/:id/void", async (req: AuthenticatedRequest, res): Promis
   res.json({ ...payment, customerName: customer?.name ?? "", amount: n(payment.amount) });
 });
 
+router.patch("/payments/:id", async (req: AuthenticatedRequest, res): Promise<void> => {
+  const params = UpdatePaymentParams.safeParse(req.params);
+  const body = UpdatePaymentBody.safeParse(req.body);
+  if (!params.success || !body.success) { res.status(400).json({ error: "بيانات الدفعة غير صحيحة." }); return; }
+  const result = await db.transaction(async (tx) => {
+    const [existing] = await tx.select().from(paymentsTable).where(eq(paymentsTable.id, params.data.id));
+    if (!existing) return null;
+    const values = body.data;
+    const [payment] = await tx.update(paymentsTable).set({
+      customerId: values.customerId,
+      orderId: values.orderId,
+      amount: values.amount,
+      type: values.type,
+      method: values.method,
+      paymentDate: dateOnly(values.paymentDate),
+      notes: values.notes,
+      updatedAt: new Date(),
+    }).where(eq(paymentsTable.id, existing.id)).returning();
+    const [customer] = await tx.select().from(customersTable).where(eq(customersTable.id, payment.customerId));
+    await tx.update(walletTransactionsTable).set({
+      type: payment.type === "refund" ? "expense" : "income",
+      amount: payment.amount,
+      description: `دفعة من ${customer?.name ?? "عميل"}`,
+      transactionDate: payment.paymentDate,
+      relatedCustomerId: payment.customerId,
+      relatedOrderId: payment.orderId,
+      updatedAt: new Date(),
+    }).where(eq(walletTransactionsTable.relatedPaymentId, payment.id));
+    await tx.insert(auditLogsTable).values({ userId: req.userId, action: "updated", entity: "payment", entityId: payment.id, description: `تم تعديل الدفعة رقم ${payment.id}` });
+    return { ...payment, customerName: customer?.name ?? "", amount: n(payment.amount) };
+  });
+  if (!result) { res.status(404).json({ error: "الدفعة غير موجودة." }); return; }
+  res.json(result);
+});
+
+router.delete("/payments/:id", async (req: AuthenticatedRequest, res): Promise<void> => {
+  const params = DeletePaymentParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: "رقم الدفعة غير صحيح." }); return; }
+  const deleted = await db.transaction(async (tx) => {
+    await tx.delete(walletTransactionsTable).where(eq(walletTransactionsTable.relatedPaymentId, params.data.id));
+    const [payment] = await tx.delete(paymentsTable).where(eq(paymentsTable.id, params.data.id)).returning();
+    if (payment) await tx.insert(auditLogsTable).values({ userId: req.userId, action: "deleted", entity: "payment", entityId: payment.id, description: `تم حذف الدفعة رقم ${payment.id}` });
+    return payment;
+  });
+  if (!deleted) { res.status(404).json({ error: "الدفعة غير موجودة." }); return; }
+  res.sendStatus(204);
+});
+
 router.get("/purchases", async (_req, res): Promise<void> => {
   const purchases = await db.select().from(sheinPurchasesTable).orderBy(desc(sheinPurchasesTable.createdAt));
   const result = await Promise.all(purchases.map(async (purchase) => {
@@ -465,11 +521,31 @@ router.post("/purchases", async (req: AuthenticatedRequest, res): Promise<void> 
       await tx.insert(purchaseItemsTable).values(parsed.data.itemIds.map((itemId) => ({ purchaseId: created.id, itemId })));
       await tx.update(orderItemsTable).set({ productStatus: "purchased" }).where(sql`${orderItemsTable.id} in (${sql.join(parsed.data.itemIds.map((id) => sql`${id}`), sql`, `)})`);
     }
-    await tx.insert(walletTransactionsTable).values({ type: "expense", amount: parsed.data.totalAmount, currency: parsed.data.currency, category: "shein_purchase", description: `شراء شي إن ${parsed.data.invoiceNumber}`, transactionDate: dateOnly(parsed.data.purchaseDate)!, createdBy: req.userId });
+    await tx.insert(walletTransactionsTable).values({ type: "expense", amount: parsed.data.totalAmount, currency: parsed.data.currency, category: "shein_purchase", description: `شراء شي إن ${parsed.data.invoiceNumber}`, transactionDate: dateOnly(parsed.data.purchaseDate)!, relatedPurchaseId: created.id, createdBy: req.userId });
     await tx.insert(auditLogsTable).values({ userId: req.userId, action: "created", entity: "shein_purchase", entityId: created.id, description: `تم تسجيل فاتورة شي إن ${created.invoiceNumber}` });
     return created;
   });
   res.status(201).json({ ...purchase, totalAmount: n(purchase.totalAmount), itemIds: parsed.data.itemIds });
+});
+
+router.delete("/purchases/:id", async (req: AuthenticatedRequest, res): Promise<void> => {
+  const params = DeletePurchaseParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: "رقم الفاتورة غير صحيح." }); return; }
+  const result = await db.transaction(async (tx) => {
+    const [purchase] = await tx.select().from(sheinPurchasesTable).where(eq(sheinPurchasesTable.id, params.data.id));
+    if (!purchase) return { kind: "missing" as const };
+    const shipmentLink = await tx.select({ id: shipmentPurchasesTable.id }).from(shipmentPurchasesTable).where(eq(shipmentPurchasesTable.purchaseId, purchase.id)).limit(1);
+    if (shipmentLink.length) return { kind: "linked" as const };
+    const links = await tx.select({ itemId: purchaseItemsTable.itemId }).from(purchaseItemsTable).where(eq(purchaseItemsTable.purchaseId, purchase.id));
+    if (links.length) await tx.update(orderItemsTable).set({ productStatus: "requested", updatedAt: new Date() }).where(sql`${orderItemsTable.id} in (${sql.join(links.map((link) => sql`${link.itemId}`), sql`, `)})`);
+    await tx.delete(walletTransactionsTable).where(eq(walletTransactionsTable.relatedPurchaseId, purchase.id));
+    await tx.delete(sheinPurchasesTable).where(eq(sheinPurchasesTable.id, purchase.id));
+    await tx.insert(auditLogsTable).values({ userId: req.userId, action: "deleted", entity: "shein_purchase", entityId: purchase.id, description: `تم حذف فاتورة شي إن ${purchase.invoiceNumber}` });
+    return { kind: "ok" as const };
+  });
+  if (result.kind === "missing") { res.status(404).json({ error: "الفاتورة غير موجودة." }); return; }
+  if (result.kind === "linked") { res.status(409).json({ error: "احذف الشحنة المرتبطة بهذه الفاتورة أولاً." }); return; }
+  res.sendStatus(204);
 });
 
 router.get("/purchases/:id", async (req, res): Promise<void> => {
@@ -506,6 +582,7 @@ router.patch("/purchases/:id", async (req: AuthenticatedRequest, res): Promise<v
         category: "shein_purchase_adjustment",
         description: `تعديل شراء شي إن ${purchase.invoiceNumber}`,
         transactionDate: dateOnly(body.data.purchaseDate) ?? existing.purchaseDate,
+        relatedPurchaseId: purchase.id,
         createdBy: req.userId,
       });
     }
@@ -566,11 +643,24 @@ router.post("/shipments", async (req: AuthenticatedRequest, res): Promise<void> 
       createdBy: req.userId,
     }).returning();
     if (parsed.data.purchaseIds.length) await tx.insert(shipmentPurchasesTable).values(parsed.data.purchaseIds.map((purchaseId) => ({ shipmentId: created.id, purchaseId })));
-    await tx.insert(walletTransactionsTable).values({ type: "expense", amount: parsed.data.shippingCost, currency: parsed.data.currency, category: "shipping", description: `شحنة ${parsed.data.shipmentNumber}`, transactionDate: dateOnly(parsed.data.shipmentDate)!, createdBy: req.userId });
+    await tx.insert(walletTransactionsTable).values({ type: "expense", amount: parsed.data.shippingCost, currency: parsed.data.currency, category: "shipping", description: `شحنة ${parsed.data.shipmentNumber}`, transactionDate: dateOnly(parsed.data.shipmentDate)!, relatedShipmentId: created.id, createdBy: req.userId });
     await tx.insert(auditLogsTable).values({ userId: req.userId, action: "created", entity: "shipment", entityId: created.id, description: `تم إنشاء الشحنة ${created.shipmentNumber}` });
     return created;
   });
   res.status(201).json({ ...shipment, shippingCost: n(shipment.shippingCost), purchaseIds: parsed.data.purchaseIds, receivingItems: [] });
+});
+
+router.delete("/shipments/:id", async (req: AuthenticatedRequest, res): Promise<void> => {
+  const params = DeleteShipmentParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: "رقم الشحنة غير صحيح." }); return; }
+  const deleted = await db.transaction(async (tx) => {
+    await tx.delete(walletTransactionsTable).where(eq(walletTransactionsTable.relatedShipmentId, params.data.id));
+    const [shipment] = await tx.delete(shipmentsTable).where(eq(shipmentsTable.id, params.data.id)).returning();
+    if (shipment) await tx.insert(auditLogsTable).values({ userId: req.userId, action: "deleted", entity: "shipment", entityId: shipment.id, description: `تم حذف الشحنة ${shipment.shipmentNumber}` });
+    return shipment;
+  });
+  if (!deleted) { res.status(404).json({ error: "الشحنة غير موجودة." }); return; }
+  res.sendStatus(204);
 });
 
 router.get("/shipments/:id", async (req, res): Promise<void> => {
@@ -616,6 +706,7 @@ router.patch("/shipments/:id", async (req: AuthenticatedRequest, res): Promise<v
         category: "shipping_adjustment",
         description: `تعديل شحنة ${shipment.shipmentNumber}`,
         transactionDate: dateOnly(body.data.shipmentDate) ?? existing.shipmentDate,
+        relatedShipmentId: shipment.id,
         createdBy: req.userId,
       });
     }
@@ -684,6 +775,43 @@ router.post("/wallet/adjust", async (req: AuthenticatedRequest, res): Promise<vo
   }).returning();
   await audit(req.userId, "adjusted", "wallet", transaction.id, parsed.data.reason);
   res.status(201).json(transactionDto(transaction));
+});
+
+router.patch("/wallet/:id", async (req: AuthenticatedRequest, res): Promise<void> => {
+  const params = UpdateWalletTransactionParams.safeParse(req.params);
+  const body = UpdateWalletTransactionBody.safeParse(req.body);
+  if (!params.success || !body.success) { res.status(400).json({ error: "بيانات المصروف غير صحيحة." }); return; }
+  const [existing] = await db.select().from(walletTransactionsTable).where(eq(walletTransactionsTable.id, params.data.id));
+  if (!existing) { res.status(404).json({ error: "الحركة غير موجودة." }); return; }
+  if (existing.relatedPaymentId || existing.relatedPurchaseId || existing.relatedShipmentId) {
+    res.status(409).json({ error: "عدّل هذه الحركة من شاشة الدفعات أو المشتريات أو الشحنات." });
+    return;
+  }
+  const [transaction] = await db.update(walletTransactionsTable).set({
+    type: body.data.type,
+    amount: body.data.amount,
+    category: body.data.category,
+    description: body.data.description,
+    transactionDate: dateOnly(body.data.transactionDate),
+    notes: body.data.notes,
+    updatedAt: new Date(),
+  }).where(eq(walletTransactionsTable.id, existing.id)).returning();
+  await audit(req.userId, "updated", "wallet_transaction", transaction.id, transaction.description);
+  res.json(transactionDto(transaction));
+});
+
+router.delete("/wallet/:id", async (req: AuthenticatedRequest, res): Promise<void> => {
+  const params = DeleteWalletTransactionParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: "رقم الحركة غير صحيح." }); return; }
+  const [existing] = await db.select().from(walletTransactionsTable).where(eq(walletTransactionsTable.id, params.data.id));
+  if (!existing) { res.status(404).json({ error: "الحركة غير موجودة." }); return; }
+  if (existing.relatedPaymentId || existing.relatedPurchaseId || existing.relatedShipmentId) {
+    res.status(409).json({ error: "احذف هذه الحركة من شاشة الدفعات أو المشتريات أو الشحنات." });
+    return;
+  }
+  await db.delete(walletTransactionsTable).where(eq(walletTransactionsTable.id, existing.id));
+  await audit(req.userId, "deleted", "wallet_transaction", existing.id, existing.description);
+  res.sendStatus(204);
 });
 
 router.get("/reports/summary", async (req, res): Promise<void> => {
