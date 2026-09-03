@@ -1063,6 +1063,8 @@ components:
         relatedCustomerId: { type: ["integer", "null"] }
         relatedOrderId: { type: ["integer", "null"] }
         relatedPaymentId: { type: ["integer", "null"] }
+        relatedPurchaseId: { type: ["integer", "null"] }
+        relatedShipmentId: { type: ["integer", "null"] }
         status: { type: string }
         createdAt: { type: string, format: date-time }
       required: [id, type, amount, currency, category, description, transactionDate, status, createdAt]

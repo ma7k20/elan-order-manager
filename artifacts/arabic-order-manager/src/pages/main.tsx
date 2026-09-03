@@ -27,7 +27,12 @@ function ConfirmModal({ open, title, description, pending, onClose, onConfirm }:
   return <Modal open={open} onClose={onClose} title={title}><p className="text-sm leading-7 text-muted-foreground">{description}</p><div className="mt-6 flex justify-end gap-2"><Button type="button" variant="ghost" onClick={onClose} disabled={pending}>إلغاء</Button><Button type="button" variant="danger" onClick={onConfirm} disabled={pending}>{pending && <Spinner/>} نعم، حذف</Button></div></Modal>;
 }
 function isManualExpense(transaction: WalletTransaction) {
-  return transaction.type === "expense" && !transaction.relatedPaymentId && !transaction.relatedOrderId && !transaction.relatedCustomerId && !["shein_purchase", "shipping"].includes(transaction.category);
+  return transaction.type === "expense"
+    && !transaction.relatedPaymentId
+    && !transaction.relatedPurchaseId
+    && !transaction.relatedShipmentId
+    && !transaction.relatedOrderId
+    && !transaction.relatedCustomerId;
 }
 function StatCard({ label, value, sub, icon: Icon, tone = "primary" }: { label: string; value: ReactNode; sub?: string; icon: typeof WalletCards; tone?: "primary" | "gold" | "coral" | "mint" }) {
   const tones = { primary: "bg-primary text-primary-foreground", gold: "bg-secondary text-secondary-foreground", coral: "bg-accent text-accent-foreground", mint: "bg-[#dce9df] text-[#1d5945]" };

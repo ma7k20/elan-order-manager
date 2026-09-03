@@ -233,7 +233,8 @@ function transactionDto(t: typeof walletTransactionsTable.$inferSelect) {
   return {
     id: t.id, type: t.type, amount: n(t.amount), currency: t.currency, category: t.category, description: t.description,
     transactionDate: t.transactionDate, relatedCustomerId: t.relatedCustomerId, relatedOrderId: t.relatedOrderId,
-    relatedPaymentId: t.relatedPaymentId, status: t.status, createdAt: t.createdAt,
+    relatedPaymentId: t.relatedPaymentId, relatedPurchaseId: t.relatedPurchaseId, relatedShipmentId: t.relatedShipmentId,
+    status: t.status, createdAt: t.createdAt,
   };
 }
 

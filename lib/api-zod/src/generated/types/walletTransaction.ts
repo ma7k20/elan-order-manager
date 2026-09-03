@@ -20,6 +20,10 @@ export interface WalletTransaction {
   relatedOrderId?: number | null;
   /** @nullable */
   relatedPaymentId?: number | null;
+  /** @nullable */
+  relatedPurchaseId?: number | null;
+  /** @nullable */
+  relatedShipmentId?: number | null;
   status: string;
   createdAt: Date;
 }

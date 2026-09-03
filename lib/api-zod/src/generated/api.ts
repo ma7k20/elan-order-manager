@@ -76,6 +76,8 @@ export const GetDashboardResponse = zod.object({
   "relatedCustomerId": zod.number().int().nullish(),
   "relatedOrderId": zod.number().int().nullish(),
   "relatedPaymentId": zod.number().int().nullish(),
+  "relatedPurchaseId": zod.number().int().nullish(),
+  "relatedShipmentId": zod.number().int().nullish(),
   "status": zod.string(),
   "createdAt": zod.coerce.date()
 })),
@@ -1191,6 +1193,8 @@ export const GetWalletResponse = zod.object({
   "relatedCustomerId": zod.number().int().nullish(),
   "relatedOrderId": zod.number().int().nullish(),
   "relatedPaymentId": zod.number().int().nullish(),
+  "relatedPurchaseId": zod.number().int().nullish(),
+  "relatedShipmentId": zod.number().int().nullish(),
   "status": zod.string(),
   "createdAt": zod.coerce.date()
 }))
@@ -1225,6 +1229,8 @@ export const CreateWalletTransactionResponse = zod.object({
   "relatedCustomerId": zod.number().int().nullish(),
   "relatedOrderId": zod.number().int().nullish(),
   "relatedPaymentId": zod.number().int().nullish(),
+  "relatedPurchaseId": zod.number().int().nullish(),
+  "relatedShipmentId": zod.number().int().nullish(),
   "status": zod.string(),
   "createdAt": zod.coerce.date()
 })
@@ -1256,6 +1262,8 @@ export const CreateWalletAdjustmentResponse = zod.object({
   "relatedCustomerId": zod.number().int().nullish(),
   "relatedOrderId": zod.number().int().nullish(),
   "relatedPaymentId": zod.number().int().nullish(),
+  "relatedPurchaseId": zod.number().int().nullish(),
+  "relatedShipmentId": zod.number().int().nullish(),
   "status": zod.string(),
   "createdAt": zod.coerce.date()
 })
@@ -1294,6 +1302,8 @@ export const UpdateWalletTransactionResponse = zod.object({
   "relatedCustomerId": zod.number().int().nullish(),
   "relatedOrderId": zod.number().int().nullish(),
   "relatedPaymentId": zod.number().int().nullish(),
+  "relatedPurchaseId": zod.number().int().nullish(),
+  "relatedShipmentId": zod.number().int().nullish(),
   "status": zod.string(),
   "createdAt": zod.coerce.date()
 })
