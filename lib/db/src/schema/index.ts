@@ -17,6 +17,25 @@ const auditFields = {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 };
 
+export const appAccountsTable = pgTable("app_accounts", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 160 }).notNull(),
+  phone: varchar("phone", { length: 20 }).notNull().unique(),
+  pinHash: varchar("pin_hash", { length: 255 }).notNull(),
+  canManageAccounts: boolean("can_manage_accounts").notNull().default(false),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const appSessionsTable = pgTable("app_sessions", {
+  id: serial("id").primaryKey(),
+  accountId: integer("account_id").notNull().references(() => appAccountsTable.id, { onDelete: "cascade" }),
+  tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const customersTable = pgTable("customers", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 200 }).notNull(),
@@ -152,6 +171,7 @@ export const insertPaymentSchema = createInsertSchema(paymentsTable);
 export const insertSheinPurchaseSchema = createInsertSchema(sheinPurchasesTable);
 export const insertShipmentSchema = createInsertSchema(shipmentsTable);
 export const insertWalletTransactionSchema = createInsertSchema(walletTransactionsTable);
+export const insertAppAccountSchema = createInsertSchema(appAccountsTable);
 
 export type Customer = typeof customersTable.$inferSelect;
 export type Order = typeof ordersTable.$inferSelect;
@@ -160,3 +180,4 @@ export type Payment = typeof paymentsTable.$inferSelect;
 export type SheinPurchase = typeof sheinPurchasesTable.$inferSelect;
 export type Shipment = typeof shipmentsTable.$inferSelect;
 export type WalletTransaction = typeof walletTransactionsTable.$inferSelect;
+export type AppAccount = typeof appAccountsTable.$inferSelect;

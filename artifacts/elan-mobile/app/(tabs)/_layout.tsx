@@ -5,8 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { Tabs } from 'expo-router';
 import { Redirect } from 'expo-router';
-import { useAuth } from '@clerk/clerk-expo';
-import { setAuthTokenGetter } from '@workspace/api-client-react';
+import { useMobileAuth } from '@/lib/auth';
 
 function ClassicTabLayout() {
   const colors = useColors();
@@ -67,12 +66,8 @@ function ClassicTabLayout() {
 }
 
 export default function TabLayout() {
-  const { isLoaded, isSignedIn, getToken } = useAuth();
-  useEffect(() => {
-    setAuthTokenGetter(() => getToken());
-    return () => setAuthTokenGetter(null);
-  }, [getToken]);
-  if (!isLoaded) return null;
-  if (!isSignedIn) return <Redirect href="/sign-in" />;
+  const { account, loading } = useMobileAuth();
+  if (loading) return null;
+  if (!account) return <Redirect href="/sign-in" />;
   return <ClassicTabLayout />;
 }

@@ -1,3 +1,4 @@
 - [Clerk and artifact workflows](clerk-storage-workflow.md) — managed previews inject required routing variables; web auth uses same-origin Clerk cookies.
 - [Safe financial cancellation](safe-financial-cancellation.md) — cancel purchases and shipments with compensating ledger entries; never erase financial history.
 - [Android build storage quota](android-build-storage-quota.md) — JVM SIGBUS and temp-file error -122 can indicate a per-process quota exhausted by Android/Gradle caches.
+- [GitHub Actions artifact delivery](github-actions-artifact-delivery.md) — connector can verify builds, but artifact archive downloads may return 403; use the run page when needed.

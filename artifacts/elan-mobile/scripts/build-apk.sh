@@ -3,7 +3,6 @@ set -euo pipefail
 
 required_vars=(
   EXPO_PUBLIC_DOMAIN
-  EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY
 )
 
 for variable in "${required_vars[@]}"; do

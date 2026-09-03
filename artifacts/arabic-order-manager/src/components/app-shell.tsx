@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
-import { useClerk } from "@clerk/react";
 import { Link, useLocation } from "wouter";
 import { Bell, ChevronLeft, ChevronRight, CircleDollarSign, ClipboardList, ContactRound, FileBarChart, LayoutDashboard, LogOut, Menu, PackageCheck, ReceiptText, Settings, ShoppingBag, Truck, WalletCards, X } from "lucide-react";
+import { useAppAuth } from "@/lib/auth";
 
 const navGroups = [
     { label: "المتابعة اليومية", items: [
@@ -21,7 +21,7 @@ const navGroups = [
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { signOut } = useClerk();
+  const { account, logout } = useAppAuth();
   const [location, setLocation] = useLocation();
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -58,8 +58,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
           {!collapsed && <div className="mt-3 flex items-center gap-3 rounded-xl bg-sidebar-accent/60 p-3">
             <span className="grid size-9 place-items-center rounded-full bg-accent text-sm font-bold text-accent-foreground">ش</span>
-            <div className="min-w-0"><p className="truncate text-xs font-bold">شريكان موثوقان</p><p className="mt-0.5 text-[10px] text-sidebar-foreground/50">إدارة مشتركة</p></div>
-            <button onClick={() => void signOut()} className="mr-auto rounded-md p-1.5 text-sidebar-foreground/50 hover:bg-sidebar-accent" data-testid="button-sign-out" title="تسجيل الخروج"><LogOut size={15}/></button>
+            <div className="min-w-0"><p className="truncate text-xs font-bold">{account?.name || "حساب ELAN"}</p><p className="mt-0.5 text-[10px] text-sidebar-foreground/50" dir="ltr">{account?.phone}</p></div>
+            <button onClick={() => void logout()} className="mr-auto rounded-md p-1.5 text-sidebar-foreground/50 hover:bg-sidebar-accent" data-testid="button-sign-out" title="تسجيل الخروج"><LogOut size={15}/></button>
           </div>}
         </div>
         <button onClick={() => setCollapsed(!collapsed)} className="absolute -left-3 top-24 hidden size-6 place-items-center rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-sm lg:grid" data-testid="button-collapse-sidebar" title={collapsed ? "توسيع القائمة" : "تصغير القائمة"}>{collapsed ? <ChevronRight size={13}/> : <ChevronLeft size={13}/>}</button>

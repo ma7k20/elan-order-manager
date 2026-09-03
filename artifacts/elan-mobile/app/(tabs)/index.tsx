@@ -1,4 +1,3 @@
-import { useClerk, useUser } from '@clerk/clerk-expo';
 import { useGetDashboard, useGetSettings } from '@workspace/api-client-react';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -6,12 +5,12 @@ import React from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { AppLogo, Card, ErrorState, Header, LoadingState, Money, Pill, SectionTitle, StatCard } from '@/components/elan-ui';
 import { useColors } from '@/hooks/useColors';
+import { useMobileAuth } from '@/lib/auth';
 
 export default function DashboardScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { signOut } = useClerk();
-  const { user } = useUser();
+  const { account, logout } = useMobileAuth();
   const dashboard = useGetDashboard();
   const settings = useGetSettings();
   const data = dashboard.data;
@@ -28,11 +27,11 @@ export default function DashboardScreen() {
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 }}>
         <AppLogo />
-        <Pressable onPress={() => signOut()} hitSlop={10} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, padding: 8 })}>
+        <Pressable onPress={() => logout()} hitSlop={10} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, padding: 8 })}>
           <Feather name="log-out" size={20} color={colors.mutedForeground} />
         </Pressable>
       </View>
-      <Header title={`مرحباً ${user?.firstName || 'بكم'}`} subtitle={settings.data?.businessName ? `${settings.data.businessName} · نظرة سريعة على اليوم` : 'نظرة سريعة على اليوم'} />
+      <Header title={`مرحباً ${account?.name || 'بكم'}`} subtitle={settings.data?.businessName ? `${settings.data.businessName} · نظرة سريعة على اليوم` : 'نظرة سريعة على اليوم'} />
       <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
         <StatCard label="رصيد المحفظة" value={<Money value={data.walletBalance} />} tone="primary" icon="credit-card" />
         <StatCard label="طلبات نشطة" value={String(data.activeOrders)} tone="gold" icon="package" />

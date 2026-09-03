@@ -36,7 +36,6 @@ jobs:
       - name: Build release APK
         env:
           EXPO_PUBLIC_DOMAIN: arabic-order-and-wallet-manager--fadialaa6407.replit.app
-          EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
         run: bash artifacts/elan-mobile/scripts/build-apk.sh
       - name: Upload ELAN APK
         uses: actions/upload-artifact@v4
