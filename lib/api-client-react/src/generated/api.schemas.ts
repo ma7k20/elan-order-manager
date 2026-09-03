@@ -556,6 +556,119 @@ export interface UploadResponse {
   objectPath: string;
 }
 
+export interface GeminiConversation {
+  id: number;
+  title: string;
+  /** @nullable */
+  phoneNumber?: string | null;
+  /** @nullable */
+  customerId?: number | null;
+  status: string;
+  handoffStatus: string;
+  /** @nullable */
+  lastMessageAt?: string | null;
+  createdAt: string;
+}
+
+export interface GeminiMessage {
+  id: number;
+  conversationId: number;
+  role: string;
+  sender: string;
+  content: string;
+  /** @nullable */
+  messageId?: string | null;
+  /** @nullable */
+  aiResponse?: string | null;
+  status: string;
+  /** @nullable */
+  handoffStatus?: string | null;
+  createdAt: string;
+}
+
+export interface GeminiConversationInput {
+  /** @minLength 1 */
+  title: string;
+  phoneNumber?: string;
+  customerId?: number;
+}
+
+export interface GeminiMessageInput {
+  /** @minLength 1 */
+  content: string;
+}
+
+export type GeminiConversationWithMessages = GeminiConversation & {
+  messages: GeminiMessage[];
+};
+
+export interface GeminiError {
+  error: string;
+}
+
+export interface AiStatus {
+  geminiConnected: boolean;
+  whatsappConnected: boolean;
+  webhookConfigured: boolean;
+  /** @nullable */
+  lastMessageAt?: string | null;
+  conversationCount: number;
+  messageCount: number;
+  handoffCount: number;
+}
+
+export interface AiSettings {
+  id: number;
+  enabled: boolean;
+  model: string;
+  systemPrompt: string;
+  welcomeMessage: string;
+  humanHandoffMessage: string;
+  maxHistory: number;
+  temperature: number;
+  rateLimitPerMinute: number;
+  updatedAt: string;
+}
+
+export interface AiSettingsUpdate {
+  enabled?: boolean;
+  /** @minLength 1 */
+  model?: string;
+  systemPrompt?: string;
+  welcomeMessage?: string;
+  humanHandoffMessage?: string;
+  /**
+     * @minimum 2
+     * @maximum 40
+     */
+  maxHistory?: number;
+  /**
+     * @minimum 0
+     * @maximum 2
+     */
+  temperature?: number;
+  /**
+     * @minimum 1
+     * @maximum 120
+     */
+  rateLimitPerMinute?: number;
+}
+
+export interface AiTestChatInput {
+  /** @nullable */
+  conversationId?: number | null;
+  /** @minLength 1 */
+  content: string;
+}
+
+export interface AiTestChatOutput {
+  conversationId: number;
+  content: string;
+  handoff: boolean;
+}
+
+export interface WhatsAppWebhookInput { [key: string]: unknown }
+
 export type SearchParameter = string;
 
 export type LimitParameter = number;
@@ -628,5 +741,11 @@ export type ListAuditLogsParams = {
  * @maximum 100
  */
 limit?: LimitParameter;
+};
+
+export type VerifyWhatsAppWebhookParams = {
+'hub.mode'?: string;
+'hub.verify_token'?: string;
+'hub.challenge'?: string;
 };
 

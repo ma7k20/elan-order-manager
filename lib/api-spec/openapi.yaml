@@ -20,6 +20,7 @@ tags:
   - name: settings
   - name: audit
   - name: storage
+  - name: gemini
 paths:
   /healthz:
     get:
@@ -733,6 +734,159 @@ paths:
               schema:
                 type: string
                 format: binary
+  /gemini/conversations:
+    get:
+      operationId: listGeminiConversations
+      tags: [gemini]
+      summary: List AI customer conversations
+      responses:
+        "200":
+          description: Conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/GeminiConversation" }
+    post:
+      operationId: createGeminiConversation
+      tags: [gemini]
+      summary: Create an AI conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GeminiConversationInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GeminiConversation" }
+  /gemini/conversations/{id}:
+    get:
+      operationId: getGeminiConversation
+      tags: [gemini]
+      summary: Get an AI conversation with messages
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200":
+          description: Conversation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GeminiConversationWithMessages" }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GeminiError" }
+    delete:
+      operationId: deleteGeminiConversation
+      tags: [gemini]
+      summary: Delete an AI conversation
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "204": { description: Deleted }
+  /gemini/conversations/{id}/messages:
+    get:
+      operationId: listGeminiMessages
+      tags: [gemini]
+      summary: List messages in an AI conversation
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/GeminiMessage" }
+    post:
+      operationId: sendGeminiMessage
+      tags: [gemini]
+      summary: Send a message and receive an SSE response
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GeminiMessageInput" }
+      responses:
+        "200": { description: SSE response, content: { text/event-stream: {} } }
+  /ai/status:
+    get:
+      operationId: getAiStatus
+      tags: [gemini]
+      summary: Get AI and WhatsApp configuration status
+      responses:
+        "200":
+          description: AI status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AiStatus" }
+  /ai/settings:
+    get:
+      operationId: getAiSettings
+      tags: [gemini]
+      summary: Get AI settings
+      responses:
+        "200":
+          description: AI settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AiSettings" }
+    patch:
+      operationId: updateAiSettings
+      tags: [gemini]
+      summary: Update AI settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AiSettingsUpdate" }
+      responses:
+        "200":
+          description: Updated AI settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AiSettings" }
+  /ai/test-chat:
+    post:
+      operationId: testAiChat
+      tags: [gemini]
+      summary: Test the AI against live business data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AiTestChatInput" }
+      responses:
+        "200":
+          description: AI response
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AiTestChatOutput" }
+  /whatsapp/webhook:
+    get:
+      operationId: verifyWhatsAppWebhook
+      tags: [gemini]
+      summary: Verify the WhatsApp Cloud API webhook
+      parameters:
+        - { name: "hub.mode", in: query, schema: { type: string } }
+        - { name: "hub.verify_token", in: query, schema: { type: string } }
+        - { name: "hub.challenge", in: query, schema: { type: string } }
+      responses:
+        "200": { description: Challenge response }
+        "403": { description: Invalid verification }
+    post:
+      operationId: receiveWhatsAppWebhook
+      tags: [gemini]
+      summary: Receive a WhatsApp Cloud API event
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { $ref: "#/components/schemas/WhatsAppWebhookInput" } }
+      responses:
+        "200": { description: Event accepted }
 
 components:
   parameters:
@@ -1218,3 +1372,106 @@ components:
         uploadURL: { type: string, format: uri }
         objectPath: { type: string }
       required: [uploadURL, objectPath]
+    GeminiConversation:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        phoneNumber: { type: ["string", "null"] }
+        customerId: { type: ["integer", "null"] }
+        status: { type: string }
+        handoffStatus: { type: string }
+        lastMessageAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+      required: [id, title, status, handoffStatus, createdAt]
+    GeminiMessage:
+      type: object
+      properties:
+        id: { type: integer }
+        conversationId: { type: integer }
+        role: { type: string }
+        sender: { type: string }
+        content: { type: string }
+        messageId: { type: ["string", "null"] }
+        aiResponse: { type: ["string", "null"] }
+        status: { type: string }
+        handoffStatus: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+      required: [id, conversationId, role, sender, content, status, createdAt]
+    GeminiConversationInput:
+      type: object
+      properties:
+        title: { type: string, minLength: 1 }
+        phoneNumber: { type: string }
+        customerId: { type: integer }
+      required: [title]
+    GeminiMessageInput:
+      type: object
+      properties: { content: { type: string, minLength: 1 } }
+      required: [content]
+    GeminiConversationWithMessages:
+      allOf:
+        - $ref: "#/components/schemas/GeminiConversation"
+        - type: object
+          properties:
+            messages:
+              type: array
+              items: { $ref: "#/components/schemas/GeminiMessage" }
+          required: [messages]
+    GeminiError:
+      type: object
+      properties: { error: { type: string } }
+      required: [error]
+    AiStatus:
+      type: object
+      properties:
+        geminiConnected: { type: boolean }
+        whatsappConnected: { type: boolean }
+        webhookConfigured: { type: boolean }
+        lastMessageAt: { type: ["string", "null"], format: date-time }
+        conversationCount: { type: integer }
+        messageCount: { type: integer }
+        handoffCount: { type: integer }
+      required: [geminiConnected, whatsappConnected, webhookConfigured, conversationCount, messageCount, handoffCount]
+    AiSettings:
+      type: object
+      properties:
+        id: { type: integer }
+        enabled: { type: boolean }
+        model: { type: string }
+        systemPrompt: { type: string }
+        welcomeMessage: { type: string }
+        humanHandoffMessage: { type: string }
+        maxHistory: { type: integer }
+        temperature: { type: number }
+        rateLimitPerMinute: { type: integer }
+        updatedAt: { type: string, format: date-time }
+      required: [id, enabled, model, systemPrompt, welcomeMessage, humanHandoffMessage, maxHistory, temperature, rateLimitPerMinute, updatedAt]
+    AiSettingsUpdate:
+      type: object
+      properties:
+        enabled: { type: boolean }
+        model: { type: string, minLength: 1 }
+        systemPrompt: { type: string }
+        welcomeMessage: { type: string }
+        humanHandoffMessage: { type: string }
+        maxHistory: { type: integer, minimum: 2, maximum: 40 }
+        temperature: { type: number, minimum: 0, maximum: 2 }
+        rateLimitPerMinute: { type: integer, minimum: 1, maximum: 120 }
+      minProperties: 1
+    AiTestChatInput:
+      type: object
+      properties:
+        conversationId: { type: ["integer", "null"] }
+        content: { type: string, minLength: 1 }
+      required: [content]
+    AiTestChatOutput:
+      type: object
+      properties:
+        conversationId: { type: integer }
+        content: { type: string }
+        handoff: { type: boolean }
+      required: [conversationId, content, handoff]
+    WhatsAppWebhookInput:
+      type: object
+      additionalProperties: true

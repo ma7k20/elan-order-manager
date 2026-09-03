@@ -12,6 +12,7 @@ import {
   CustomersPage, CustomerProfilePage, DashboardPage, NewOrderPage, OrderDetailsPage,
   OrdersPage, PaymentsPage, PurchasesPage, ReportsPage, SettingsPage, ShipmentsPage, WalletPage,
 } from "@/pages/main";
+import { AiAssistantPage } from "@/pages/ai-assistant";
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -106,6 +107,7 @@ function Router() {
     <Route path="/wallet" component={() => <Protected><WalletPage /></Protected>} />
     <Route path="/reports" component={() => <Protected><ReportsPage /></Protected>} />
     <Route path="/settings" component={() => <Protected><SettingsPage /></Protected>} />
+    <Route path="/ai-assistant" component={() => <Protected><AiAssistantPage /></Protected>} />
     <Route component={NotFound} />
   </Switch></ErrorBoundary>;
 }

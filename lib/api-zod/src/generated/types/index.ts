@@ -7,6 +7,11 @@
  */
 
 export * from './activity';
+export * from './aiSettings';
+export * from './aiSettingsUpdate';
+export * from './aiStatus';
+export * from './aiTestChatInput';
+export * from './aiTestChatOutput';
 export * from './alert';
 export * from './auditLog';
 export * from './customer';
@@ -16,6 +21,12 @@ export * from './customerUpdate';
 export * from './dashboard';
 export * from './exportReportParams';
 export * from './exportReportType';
+export * from './geminiConversation';
+export * from './geminiConversationInput';
+export * from './geminiConversationWithMessages';
+export * from './geminiError';
+export * from './geminiMessage';
+export * from './geminiMessageInput';
 export * from './getRecentActivityParams';
 export * from './getReportSummaryParams';
 export * from './getReportSummaryRange';
@@ -53,6 +64,7 @@ export * from './shipmentInput';
 export * from './shipmentUpdate';
 export * from './uploadRequest';
 export * from './uploadResponse';
+export * from './verifyWhatsAppWebhookParams';
 export * from './voidInput';
 export * from './wallet';
 export * from './walletAdjustmentInput';
@@ -62,3 +74,4 @@ export * from './walletTransactionInput';
 export * from './walletTransactionInputType';
 export * from './walletTransactionUpdate';
 export * from './walletTransactionUpdateType';
+export * from './whatsAppWebhookInput';

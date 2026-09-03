@@ -1452,3 +1452,232 @@ export const GetStoredObjectParams = zod.object({
 export const GetStoredObjectResponse = zod.unknown()
 
 
+/**
+ * @summary List AI customer conversations
+ */
+export const ListGeminiConversationsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "phoneNumber": zod.string().nullish(),
+  "customerId": zod.number().int().nullish(),
+  "status": zod.string(),
+  "handoffStatus": zod.string(),
+  "lastMessageAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListGeminiConversationsResponse = zod.array(ListGeminiConversationsResponseItem)
+
+
+/**
+ * @summary Create an AI conversation
+ */
+
+
+
+export const CreateGeminiConversationBody = zod.object({
+  "title": zod.string().min(1),
+  "phoneNumber": zod.string().optional(),
+  "customerId": zod.number().int().optional()
+})
+
+export const CreateGeminiConversationResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "phoneNumber": zod.string().nullish(),
+  "customerId": zod.number().int().nullish(),
+  "status": zod.string(),
+  "handoffStatus": zod.string(),
+  "lastMessageAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get an AI conversation with messages
+ */
+export const GetGeminiConversationParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetGeminiConversationResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "phoneNumber": zod.string().nullish(),
+  "customerId": zod.number().int().nullish(),
+  "status": zod.string(),
+  "handoffStatus": zod.string(),
+  "lastMessageAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+}).and(zod.object({
+  "messages": zod.array(zod.object({
+  "id": zod.number().int(),
+  "conversationId": zod.number().int(),
+  "role": zod.string(),
+  "sender": zod.string(),
+  "content": zod.string(),
+  "messageId": zod.string().nullish(),
+  "aiResponse": zod.string().nullish(),
+  "status": zod.string(),
+  "handoffStatus": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+}))
+}))
+
+
+/**
+ * @summary Delete an AI conversation
+ */
+export const DeleteGeminiConversationParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteGeminiConversationResponse = zod.void()
+
+
+/**
+ * @summary List messages in an AI conversation
+ */
+export const ListGeminiMessagesParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ListGeminiMessagesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "conversationId": zod.number().int(),
+  "role": zod.string(),
+  "sender": zod.string(),
+  "content": zod.string(),
+  "messageId": zod.string().nullish(),
+  "aiResponse": zod.string().nullish(),
+  "status": zod.string(),
+  "handoffStatus": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListGeminiMessagesResponse = zod.array(ListGeminiMessagesResponseItem)
+
+
+/**
+ * @summary Send a message and receive an SSE response
+ */
+export const SendGeminiMessageParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+
+
+
+export const SendGeminiMessageBody = zod.object({
+  "content": zod.string().min(1)
+})
+
+export const SendGeminiMessageResponse = zod.unknown()
+
+
+/**
+ * @summary Get AI and WhatsApp configuration status
+ */
+export const GetAiStatusResponse = zod.object({
+  "geminiConnected": zod.boolean(),
+  "whatsappConnected": zod.boolean(),
+  "webhookConfigured": zod.boolean(),
+  "lastMessageAt": zod.coerce.date().nullish(),
+  "conversationCount": zod.number().int(),
+  "messageCount": zod.number().int(),
+  "handoffCount": zod.number().int()
+})
+
+
+/**
+ * @summary Get AI settings
+ */
+export const GetAiSettingsResponse = zod.object({
+  "id": zod.number().int(),
+  "enabled": zod.boolean(),
+  "model": zod.string(),
+  "systemPrompt": zod.string(),
+  "welcomeMessage": zod.string(),
+  "humanHandoffMessage": zod.string(),
+  "maxHistory": zod.number().int(),
+  "temperature": zod.number(),
+  "rateLimitPerMinute": zod.number().int(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update AI settings
+ */
+
+export const updateAiSettingsBodyMaxHistoryMin = 2;
+export const updateAiSettingsBodyMaxHistoryMax = 40;
+
+export const updateAiSettingsBodyTemperatureMin = 0;
+export const updateAiSettingsBodyTemperatureMax = 2;
+
+export const updateAiSettingsBodyRateLimitPerMinuteMax = 120;
+
+
+
+export const UpdateAiSettingsBody = zod.object({
+  "enabled": zod.boolean().optional(),
+  "model": zod.string().min(1).optional(),
+  "systemPrompt": zod.string().optional(),
+  "welcomeMessage": zod.string().optional(),
+  "humanHandoffMessage": zod.string().optional(),
+  "maxHistory": zod.number().int().min(updateAiSettingsBodyMaxHistoryMin).max(updateAiSettingsBodyMaxHistoryMax).optional(),
+  "temperature": zod.number().min(updateAiSettingsBodyTemperatureMin).max(updateAiSettingsBodyTemperatureMax).optional(),
+  "rateLimitPerMinute": zod.number().int().min(1).max(updateAiSettingsBodyRateLimitPerMinuteMax).optional()
+})
+
+export const UpdateAiSettingsResponse = zod.object({
+  "id": zod.number().int(),
+  "enabled": zod.boolean(),
+  "model": zod.string(),
+  "systemPrompt": zod.string(),
+  "welcomeMessage": zod.string(),
+  "humanHandoffMessage": zod.string(),
+  "maxHistory": zod.number().int(),
+  "temperature": zod.number(),
+  "rateLimitPerMinute": zod.number().int(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Test the AI against live business data
+ */
+
+
+
+export const TestAiChatBody = zod.object({
+  "conversationId": zod.number().int().nullish(),
+  "content": zod.string().min(1)
+})
+
+export const TestAiChatResponse = zod.object({
+  "conversationId": zod.number().int(),
+  "content": zod.string(),
+  "handoff": zod.boolean()
+})
+
+
+/**
+ * @summary Verify the WhatsApp Cloud API webhook
+ */
+export const VerifyWhatsAppWebhookQueryParams = zod.object({
+  "hub.mode": zod.coerce.string().optional(),
+  "hub.verify_token": zod.coerce.string().optional(),
+  "hub.challenge": zod.coerce.string().optional()
+})
+
+export const VerifyWhatsAppWebhookResponse = zod.unknown()
+
+
+/**
+ * @summary Receive a WhatsApp Cloud API event
+ */
+export const ReceiveWhatsAppWebhookBody = zod.record(zod.string(), zod.unknown())
+
+export const ReceiveWhatsAppWebhookResponse = zod.unknown()
+
+

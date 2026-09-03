@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { Bell, ChevronLeft, ChevronRight, CircleDollarSign, ClipboardList, ContactRound, FileBarChart, LayoutDashboard, LogOut, Menu, PackageCheck, ReceiptText, Settings, ShoppingBag, Truck, WalletCards, X } from "lucide-react";
+import { Bell, Bot, ChevronLeft, ChevronRight, CircleDollarSign, ClipboardList, ContactRound, FileBarChart, LayoutDashboard, LogOut, Menu, PackageCheck, ReceiptText, Settings, ShoppingBag, Truck, WalletCards, X } from "lucide-react";
 import { useAppAuth } from "@/lib/auth";
 
 const navGroups = [
@@ -17,6 +17,9 @@ const navGroups = [
     { href: "/payments", label: "الدفعات", icon: CircleDollarSign },
     { href: "/wallet", label: "المحفظة", icon: WalletCards },
     { href: "/reports", label: "التقارير", icon: FileBarChart },
+  ]},
+  { label: "الذكاء الاصطناعي", items: [
+    { href: "/ai-assistant", label: "المساعد الذكي", icon: Bot },
   ]},
 ];
 
