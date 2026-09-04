@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { setBaseUrl } from "@workspace/api-client-react";
 
 export type AppAccount = {
   id: number;
@@ -19,6 +20,9 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const apiBaseUrl = (import.meta.env.VITE_API_URL || "").replace(/\\/+$/, "");
+setBaseUrl(apiBaseUrl || null);
+
 async function readError(response: Response): Promise<string> {
   try {
     const data = await response.json() as { error?: string };
@@ -29,9 +33,7 @@ async function readError(response: Response): Promise<string> {
 }
 
 export async function authApi<T>(path: string, init?: RequestInit): Promise<T> {
-  const API_URL = import.meta.env.VITE_API_URL || "";
-
-const response = await fetch(`${API_URL}/api${path}`, {
+  const response = await fetch(`${apiBaseUrl}/api${path}`, {
     ...init,
     credentials: "include",
     headers: {
