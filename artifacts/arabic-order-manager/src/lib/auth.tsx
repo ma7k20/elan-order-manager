@@ -20,7 +20,7 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const apiBaseUrl = (import.meta.env.VITE_API_URL || "").replace(/\\/+$/, "");
+const apiBaseUrl = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 setBaseUrl(apiBaseUrl || null);
 
 async function readError(response: Response): Promise<string> {
