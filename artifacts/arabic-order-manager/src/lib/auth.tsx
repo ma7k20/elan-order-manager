@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { setBaseUrl } from "@workspace/api-client-react";
+import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
 
 export type AppAccount = {
   id: number;
@@ -21,7 +21,18 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
+const AUTH_TOKEN_KEY = "elan_session_token";
 setBaseUrl(apiBaseUrl || null);
+
+function getStoredToken(): string | null {
+  try {
+    return localStorage.getItem(AUTH_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+setAuthTokenGetter(getStoredToken);
 
 async function readError(response: Response): Promise<string> {
   try {
@@ -33,11 +44,13 @@ async function readError(response: Response): Promise<string> {
 }
 
 export async function authApi<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getStoredToken();
   const response = await fetch(`${apiBaseUrl}/api${path}`, {
     ...init,
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
   });
@@ -66,10 +79,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (phone: string, pin: string) => {
-    const result = await authApi<{ account: AppAccount }>("/auth/login", {
+    const result = await authApi<{ token: string; account: AppAccount }>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ phone, pin }),
     });
+    try {
+      localStorage.setItem(AUTH_TOKEN_KEY, result.token);
+    } catch {
+      // Cookie auth remains available as a fallback.
+    }
     queryClient.clear();
     setAccount(result.account);
   };
@@ -78,6 +96,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await authApi<void>("/auth/logout", { method: "POST" });
     } finally {
+      try {
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+      } catch {
+        // Ignore storage cleanup failures.
+      }
       queryClient.clear();
       setAccount(null);
     }
