@@ -29,7 +29,9 @@ async function readError(response: Response): Promise<string> {
 }
 
 export async function authApi<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, {
+  const API_URL = import.meta.env.VITE_API_URL || "";
+
+const response = await fetch(`${API_URL}/api${path}`, {
     ...init,
     credentials: "include",
     headers: {
