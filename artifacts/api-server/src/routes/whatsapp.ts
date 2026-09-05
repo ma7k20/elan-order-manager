@@ -57,12 +57,14 @@ router.post("/whatsapp/webhook", async (req, res): Promise<void> => {
     return;
   }
 
-  const expected =`sha256=${createHmac("sha256", appSecret)
+  const hash = createHmac("sha256", appSecret)
   .update(rawBody)
-  .digest("hex")}`;
+  .digest("hex");
 
-  const receivedBuffer = Buffer.from(signature);
-  const expectedBuffer = Buffer.from(expected);
+const expected = "sha256=" + hash;
+
+const receivedBuffer = Buffer.from(signature);
+const expectedBuffer = Buffer.from(expected);
 
   if (
     receivedBuffer.length !== expectedBuffer.length ||
