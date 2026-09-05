@@ -17,7 +17,43 @@ router.post("/whatsapp/webhook", async (req, res): Promise<void> => {
   const signature = req.header("x-hub-signature-256");
   const rawBody = (req as typeof req & { rawBody?: Buffer }).rawBody;
   if (!appSecret) { res.status(503).json({ error: "WhatsApp webhook signature verification is not configured" }); return; }
-  if (!signature || !rawBody) { res.sendStatus(401); return; }
+if (!signature || !rawBody) {
+  req.log.warn(
+    {
+      hasSignature: Boolean(signature),
+      rawBodyLength: rawBody?.length ?? 0,
+      contentType: req.headers["content-type"],
+    },
+    "WhatsApp webhook missing signature or raw body",
+  );
+  res.sendStatus(401);
+  return;
+}
+
+const expected = `sha256=${createHmac("sha256", appSecret)
+  .update(rawBody)
+  .digest("hex")}`;
+
+const receivedBuffer = Buffer.from(signature);
+const expectedBuffer = Buffer.from(expected);
+
+if (
+  receivedBuffer.length !== expectedBuffer.length ||
+  !timingSafeEqual(receivedBuffer, expectedBuffer)
+) {
+  req.log.warn(
+    {
+      hasSignature: true,
+      rawBodyLength: rawBody.length,
+      signatureLength: signature.length,
+      signaturePrefix: signature.slice(0, 7),
+    },
+    "WhatsApp webhook signature mismatch",
+  );
+
+  res.sendStatus(401);
+  return;
+}
   const expected = `sha256=${createHmac("sha256", appSecret).update(rawBody).digest("hex")}`;
   const receivedBuffer = Buffer.from(signature);
   const expectedBuffer = Buffer.from(expected);
