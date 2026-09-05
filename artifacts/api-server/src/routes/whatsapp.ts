@@ -1,4 +1,3 @@
-```ts
 import { Router, type IRouter } from "express";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { eq } from "drizzle-orm";
@@ -58,13 +57,13 @@ router.post("/whatsapp/webhook", async (req, res): Promise<void> => {
   }
 
   const hash = createHmac("sha256", appSecret)
-  .update(rawBody)
-  .digest("hex");
+    .update(rawBody)
+    .digest("hex");
 
-const expected = "sha256=" + hash;
+  const expected = "sha256=" + hash;
 
-const receivedBuffer = Buffer.from(signature);
-const expectedBuffer = Buffer.from(expected);
+  const receivedBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
 
   if (
     receivedBuffer.length !== expectedBuffer.length ||
@@ -118,7 +117,9 @@ const expectedBuffer = Buffer.from(expected);
         .where(eq(messages.messageId, incoming.id))
         .limit(1);
 
-      if (duplicate[0]) continue;
+      if (duplicate[0]) {
+        continue;
+      }
 
       const phone = String(incoming.from);
 
@@ -129,10 +130,12 @@ const expectedBuffer = Buffer.from(expected);
         .limit(1);
 
       if (!conversation) {
+        const customerName =
+          value?.contacts?.[0]?.profile?.name ||
+          "WhatsApp customer";
+
         conversation = await createConversation({
-          title:
-            value?.contacts?.[0]?.profile?.name ||
-            `WhatsApp ${phone.slice(-4)}`,
+          title: customerName,
           phoneNumber: phone,
         });
       }
@@ -158,7 +161,7 @@ const expectedBuffer = Buffer.from(expected);
           {
             conversationId: conversation.id,
             messageId: incoming.id,
-            err: (error as Error).message,
+            err: error instanceof Error ? error.message : String(error),
           },
           "WhatsApp message processing failed",
         );
@@ -168,4 +171,3 @@ const expectedBuffer = Buffer.from(expected);
 });
 
 export default router;
-```
