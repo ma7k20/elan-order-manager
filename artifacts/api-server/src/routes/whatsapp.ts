@@ -61,9 +61,6 @@ router.post("/whatsapp/webhook", async (req, res): Promise<void> => {
   .update(rawBody)
   .digest("hex")}`;
 
-const receivedBuffer = Buffer.from(signature);
-const expectedBuffer = Buffer.from(expected);
-
   const receivedBuffer = Buffer.from(signature);
   const expectedBuffer = Buffer.from(expected);
 
