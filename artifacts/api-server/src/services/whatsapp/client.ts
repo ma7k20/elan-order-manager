@@ -1,8 +1,10 @@
 ```ts
 const graphUrl = () =>
-  `https://graph.facebook.com/${
-    process.env.WHATSAPP_GRAPH_API_VERSION || "v21.0"
-  }/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+  "https://graph.facebook.com/" +
+  (process.env.WHATSAPP_GRAPH_API_VERSION || "v21.0") +
+  "/" +
+  process.env.WHATSAPP_PHONE_NUMBER_ID +
+  "/messages";
 
 export async function sendWhatsAppText(to: string, body: string) {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
@@ -19,7 +21,7 @@ export async function sendWhatsAppText(to: string, body: string) {
       const response = await fetch(graphUrl(), {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: "Bearer " + token,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -42,19 +44,22 @@ export async function sendWhatsAppText(to: string, body: string) {
 
       try {
         const data = JSON.parse(raw);
-        errorMessage =
-          data?.error?.message ||
-          data?.error?.error_user_msg ||
-          raw;
+
+        if (data && data.error) {
+          errorMessage =
+            data.error.message ||
+            data.error.error_user_msg ||
+            raw;
+        }
       } catch {
-        // Keep raw response if it is not JSON.
+        // Keep the raw response when it is not JSON.
       }
 
       last = new Error(
-        `WhatsApp Graph API returned ${response.status}: ${errorMessage.slice(
-          0,
-          1000,
-        )}`,
+        "WhatsApp Graph API returned " +
+          response.status +
+          ": " +
+          errorMessage.slice(0, 1000),
       );
 
       if (response.status < 500 && response.status !== 429) {
@@ -72,6 +77,6 @@ export async function sendWhatsAppText(to: string, body: string) {
     );
   }
 
-  throw last ?? new Error("WhatsApp send failed");
+  throw last || new Error("WhatsApp send failed");
 }
 ```
