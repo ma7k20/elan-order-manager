@@ -1,4 +1,3 @@
-```ts
 const graphUrl = () =>
   "https://graph.facebook.com/" +
   (process.env.WHATSAPP_GRAPH_API_VERSION || "v21.0") +
@@ -52,7 +51,7 @@ export async function sendWhatsAppText(to: string, body: string) {
             raw;
         }
       } catch {
-        // Keep the raw response when it is not JSON.
+        // Keep raw response if it is not JSON.
       }
 
       last = new Error(
@@ -79,4 +78,3 @@ export async function sendWhatsAppText(to: string, body: string) {
 
   throw last || new Error("WhatsApp send failed");
 }
-```
