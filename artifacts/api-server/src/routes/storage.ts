@@ -63,6 +63,7 @@ router.put(
   raw({ type: ['application/octet-stream', 'image/*', 'application/pdf'], limit: '10mb' }),
   async (req: Request<{ id: string }>, res: Response) => {
     try {
+      req.log.info({ uploadId: req.params.id }, 'Supabase upload handler v3 reached');
       const body = Buffer.isBuffer(req.body) ? req.body : Buffer.from([]);
       if (!body.length) {
         res.status(400).json({ error: 'Empty upload' });
