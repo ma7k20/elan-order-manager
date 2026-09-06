@@ -36,7 +36,8 @@ router.post(
     try {
       const { name, size, contentType } = parsed.data;
 
-      const origin = `${req.protocol}://${req.get('host')}`;
+      const forwardedProto = req.get('x-forwarded-proto')?.split(',')[0].trim();
+      const origin = `${forwardedProto || req.protocol}://${req.get('host')}`;
       const target = objectStorageService.getSupabaseUploadTarget(origin);
 
       res.json(
