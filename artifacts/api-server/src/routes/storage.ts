@@ -37,7 +37,7 @@ router.post(
       const { name, size, contentType } = parsed.data;
 
       const origin = `${req.protocol}://${req.get('host')}`;
-      const target = objectStorageService.getCloudinaryUploadTarget(origin, contentType);
+      const target = objectStorageService.getSupabaseUploadTarget(origin);
 
       res.json(
         RequestUploadUrlResponse.parse({
@@ -54,29 +54,24 @@ router.post(
 );
 
 router.put(
-  '/storage/uploads/:resourceType/:id',
+  '/storage/uploads/:id',
   requireAuth,
   raw({ type: ['application/octet-stream', 'image/*', 'application/pdf'], limit: '10mb' }),
-  async (req: Request<{ resourceType: string; id: string }>, res: Response) => {
+  async (req: Request<{ id: string }>, res: Response) => {
     try {
-      if (!['image', 'raw'].includes(req.params.resourceType)) {
-        res.status(400).json({ error: 'Invalid resource type' });
-        return;
-      }
       const body = Buffer.isBuffer(req.body) ? req.body : Buffer.from([]);
       if (!body.length) {
         res.status(400).json({ error: 'Empty upload' });
         return;
       }
-      await objectStorageService.uploadToCloudinary(
-        req.params.resourceType,
-        `elan/uploads/${req.params.id}`,
+      await objectStorageService.uploadToSupabase(
+        `uploads/${req.params.id}`,
         body,
         req.headers['content-type'] || 'application/octet-stream',
       );
       res.sendStatus(204);
     } catch (error) {
-      req.log.error({ err: error }, 'Error uploading object to Cloudinary');
+      req.log.error({ err: error }, 'Error uploading object to Supabase');
       res.status(500).json({ error: 'Failed to upload file' });
     }
   },
