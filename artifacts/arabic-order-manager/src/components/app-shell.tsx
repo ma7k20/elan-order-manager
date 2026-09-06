@@ -1,12 +1,13 @@
 import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { Bell, Bot, ChevronLeft, ChevronRight, CircleDollarSign, ClipboardList, ContactRound, FileBarChart, LayoutDashboard, LogOut, Menu, PackageCheck, ReceiptText, Settings, ShoppingBag, Truck, WalletCards, X } from "lucide-react";
+import { Bell, Bot, Boxes, ChevronLeft, ChevronRight, CircleDollarSign, ClipboardList, ContactRound, FileBarChart, LayoutDashboard, LogOut, Menu, PackageCheck, ReceiptText, Settings, ShoppingBag, Truck, WalletCards, X } from "lucide-react";
 import { useAppAuth } from "@/lib/auth";
 
 const navGroups = [
     { label: "المتابعة اليومية", items: [
     { href: "/dashboard", label: "نظرة عامة", icon: LayoutDashboard },
     { href: "/orders", label: "الطلبات", icon: ClipboardList },
+    { href: "/sorting", label: "الفرز والتسليم", icon: Boxes },
     { href: "/customers", label: "العملاء", icon: ContactRound },
   ]},
   { label: "الاستلام والتسليم", items: [

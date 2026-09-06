@@ -9,7 +9,7 @@ import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
 import { AuthProvider, useAppAuth } from "@/lib/auth";
 import {
-  CustomersPage, CustomerProfilePage, DashboardPage, NewOrderPage, OrderDetailsPage,
+  CustomersPage, CustomerProfilePage, DashboardPage, NewOrderPage, OrderDetailsPage, SortingPage,
   OrdersPage, PaymentsPage, PurchasesPage, ReportsPage, SettingsPage, ShipmentsPage, WalletPage,
 } from "@/pages/main";
 import { AiAssistantPage } from "@/pages/ai-assistant";
@@ -100,6 +100,7 @@ function Router() {
     <Route path="/customers/:id" component={() => <Protected><CustomerProfilePage /></Protected>} />
     <Route path="/orders/new" component={() => <Protected><NewOrderPage /></Protected>} />
     <Route path="/orders/:id" component={() => <Protected><OrderDetailsPage /></Protected>} />
+    <Route path="/sorting" component={() => <Protected><SortingPage /></Protected>} />
     <Route path="/orders" component={() => <Protected><OrdersPage /></Protected>} />
     <Route path="/payments" component={() => <Protected><PaymentsPage /></Protected>} />
     <Route path="/purchases" component={() => <Protected><PurchasesPage /></Protected>} />
