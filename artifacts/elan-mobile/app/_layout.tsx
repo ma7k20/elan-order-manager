@@ -12,6 +12,9 @@ import {
   useFonts,
 } from '@expo-google-fonts/inter';
 import { Stack } from 'expo-router';
+import * as Linking from 'expo-linking';
+import Constants from 'expo-constants';
+import { Alert } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { setBaseUrl } from '@workspace/api-client-react';
 import { MobileAuthProvider } from '@/lib/auth';
@@ -22,6 +25,15 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 const domain = process.env.EXPO_PUBLIC_DOMAIN;
 if (domain) setBaseUrl(`https://${domain}`);
+
+type MobileUpdateInfo = { version: string; url: string; message: string; required: boolean };
+
+function isNewerVersion(remote: string, current: string) {
+  const parse = (value: string) => value.split('.').map((part) => Number.parseInt(part, 10) || 0);
+  const next = parse(remote);
+  const installed = parse(current);
+  return next.some((part, index) => part > (installed[index] || 0)) || next.length > installed.length;
+}
 
 function RootLayoutNav() {
   return (
@@ -39,6 +51,22 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+
+  useEffect(() => {
+    const apiDomain = process.env.EXPO_PUBLIC_DOMAIN;
+    if (!apiDomain) return;
+    const currentVersion = Constants.expoConfig?.version || '0.0.0';
+    fetch(`https://${apiDomain}/api/mobile/update-info`)
+      .then((response) => response.ok ? response.json() as Promise<MobileUpdateInfo> : null)
+      .then((update) => {
+        if (!update?.version || !update.url || !isNewerVersion(update.version, currentVersion)) return;
+        Alert.alert('تحديث جديد متوفر', update.message, [
+          ...(update.required ? [] : [{ text: 'لاحقًا', style: 'cancel' as const }]),
+          { text: 'تنزيل التحديث', onPress: () => { void Linking.openURL(update.url); } },
+        ], { cancelable: !update.required });
+      })
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
