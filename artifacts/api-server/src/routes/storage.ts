@@ -1,5 +1,4 @@
 import { Readable } from 'stream';
-import { randomUUID } from 'node:crypto';
 import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
@@ -15,7 +14,6 @@ import { requireAuth } from '../middlewares/requireAuth';
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
-const pendingUploads = new Map<string, number>();
 
 /**
  * POST /storage/uploads/request-url
@@ -46,12 +44,9 @@ router.post(
         res.status(500).json({ error: 'Failed to create upload target' });
         return;
       }
-      const uploadToken = randomUUID();
-      pendingUploads.set(`${objectId}:${uploadToken}`, Date.now() + 15 * 60 * 1000);
-
       res.json(
         RequestUploadUrlResponse.parse({
-          uploadURL: `${target.uploadURL}?token=${uploadToken}`,
+          uploadURL: target.uploadURL,
           objectPath: target.objectPath,
           metadata: { name, size, contentType },
         }),
@@ -68,14 +63,6 @@ router.put(
   raw({ type: ['application/octet-stream', 'image/*', 'application/pdf'], limit: '10mb' }),
   async (req: Request<{ id: string }>, res: Response) => {
     try {
-      const token = typeof req.query.token === 'string' ? req.query.token : '';
-      const uploadKey = `${req.params.id}:${token}`;
-      const expiresAt = pendingUploads.get(uploadKey);
-      if (!expiresAt || expiresAt < Date.now()) {
-        pendingUploads.delete(uploadKey);
-        res.sendStatus(401);
-        return;
-      }
       const body = Buffer.isBuffer(req.body) ? req.body : Buffer.from([]);
       if (!body.length) {
         res.status(400).json({ error: 'Empty upload' });
@@ -86,7 +73,6 @@ router.put(
         body,
         req.headers['content-type'] || 'application/octet-stream',
       );
-      pendingUploads.delete(uploadKey);
       res.sendStatus(204);
     } catch (error) {
       req.log.error({ err: error }, 'Error uploading object to Supabase');
