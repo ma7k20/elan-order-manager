@@ -1,13 +1,13 @@
 import { useCreateOrder, useDeleteOrder, useListCustomers, useListOrders, useUpdateOrder } from '@workspace/api-client-react';
 import { Feather } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Alert, Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Alert, Image, Linking, Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { Card, EmptyState, ErrorState, Field, Header, LoadingState, Money, Pill, PrimaryButton } from '@/components/elan-ui';
 import { useColors } from '@/hooks/useColors';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { useQueryClient } from '@tanstack/react-query';
 
-type ItemDraft = { name: string; quantity: string; sellingPrice: string; commission: string; sheinCost: string };
+type ItemDraft = { name: string; quantity: string; sellingPrice: string; commission: string; sheinCost: string; productUrl: string; imagePath: string };
 
 export default function OrdersScreen() {
   const colors = useColors();
@@ -22,7 +22,7 @@ export default function OrdersScreen() {
   const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'delivery'>('pickup');
   const [deliveryFee, setDeliveryFee] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [itemsDraft, setItemsDraft] = useState<ItemDraft[]>([{ name: '', quantity: '1', sellingPrice: '', commission: '', sheinCost: '' }]);
+  const [itemsDraft, setItemsDraft] = useState<ItemDraft[]>([{ name: '', quantity: '1', sellingPrice: '', commission: '', sheinCost: '', productUrl: '', imagePath: '' }]);
   const [message, setMessage] = useState('');
 
   const updateItem = (index: number, key: keyof ItemDraft, value: string) => setItemsDraft((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item));
@@ -49,10 +49,10 @@ export default function OrdersScreen() {
         deliveryMethod,
         deliveryFee: deliveryMethod === 'delivery' ? Number(deliveryFee || 0) : 0,
         deliveryAddress: deliveryMethod === 'delivery' ? deliveryAddress.trim() || null : null,
-        items: itemsDraft.map((item) => ({ name: item.name.trim(), quantity: Math.max(1, Number(item.quantity) || 1), sellingPrice: Number(item.sellingPrice), commission: Number(item.commission || 0), sheinCost: Number(item.sheinCost) })),
+        items: itemsDraft.map((item) => ({ name: item.name.trim(), quantity: Math.max(1, Number(item.quantity) || 1), sellingPrice: Number(item.sellingPrice), commission: Number(item.commission || 0), sheinCost: Number(item.sheinCost), productUrl: item.productUrl.trim() || null, imagePath: item.imagePath.trim() || null })),
       },
     }, {
-      onSuccess: () => { queryClient.invalidateQueries(); setOpen(false); setCustomerId(null); setItemsDraft([{ name: '', quantity: '1', sellingPrice: '', commission: '', sheinCost: '' }]); setDeliveryFee(''); setDeliveryAddress(''); },
+      onSuccess: () => { queryClient.invalidateQueries(); setOpen(false); setCustomerId(null); setItemsDraft([{ name: '', quantity: '1', sellingPrice: '', commission: '', sheinCost: '', productUrl: '', imagePath: '' }]); setDeliveryFee(''); setDeliveryAddress(''); },
       onError: () => setMessage('تعذر حفظ الطلب. تحقق من البيانات والاتصال.'),
     });
   };
@@ -81,6 +81,13 @@ export default function OrdersScreen() {
             </View>
           </View>
           <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 14 }} />
+          <View style={{ gap: 10 }}>
+            {(order.items || []).map((item) => <View key={item.id} style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+              {item.imagePath ? <Image source={{ uri: item.imagePath }} style={{ width: 52, height: 52, borderRadius: 10 }} resizeMode="cover" /> : <View style={{ width: 52, height: 52, borderRadius: 10, backgroundColor: colors.secondary, alignItems: 'center', justifyContent: 'center' }}><Feather name="image" size={18} color={colors.primary} /></View>}
+              <View style={{ flex: 1 }}><Text style={{ color: colors.foreground, fontWeight: '800', textAlign: 'right' }}>{item.name}</Text><Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: 3, textAlign: 'right' }}>كمية {item.quantity} · {item.productStatus === 'arrived' ? 'وصلت' : item.productStatus === 'delivered' ? 'تم التسليم' : 'قيد الفرز'}</Text></View>
+              {item.productUrl ? <Pressable onPress={() => Linking.openURL(item.productUrl!)}><Feather name="external-link" size={18} color={colors.primary} /></Pressable> : null}
+            </View>)}
+          </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <Text style={{ color: colors.mutedForeground }}>حالة الطلب</Text>
             <Text style={{ color: colors.foreground, fontWeight: '700' }}>{order.status === 'active' ? 'نشط' : order.status}</Text>
@@ -112,8 +119,8 @@ export default function OrdersScreen() {
             {([['pickup', 'تسليم شخصي'], ['delivery', 'Delivery'] ] as const).map(([value, label]) => <Pressable key={value} onPress={() => setDeliveryMethod(value)} style={{ flex: 1, paddingVertical: 12, borderRadius: 13, borderWidth: 1, borderColor: deliveryMethod === value ? colors.primary : colors.border, backgroundColor: deliveryMethod === value ? colors.secondary : colors.background, alignItems: 'center' }}><Text style={{ color: colors.foreground, fontWeight: '800' }}>{label}</Text></Pressable>)}
           </View>
           {deliveryMethod === 'delivery' ? <><Field label="رسوم التوصيل (تضاف على الفاتورة)" value={deliveryFee} onChangeText={setDeliveryFee} keyboardType="decimal-pad" placeholder="10" /><Field label="عنوان التوصيل" value={deliveryAddress} onChangeText={setDeliveryAddress} placeholder="العنوان الكامل" /></> : null}
-          {itemsDraft.map((item, index) => <Card key={index} style={{ backgroundColor: colors.background }}><Text style={{ color: colors.foreground, fontWeight: '800', marginBottom: 10 }}>{`المنتج ${index + 1}`}</Text><Field label="اسم المنتج" value={item.name} onChangeText={(value) => updateItem(index, 'name', value)} placeholder="مثال: فستان صيفي" /><View style={{ flexDirection: 'row', gap: 8 }}><View style={{ flex: 1 }}><Field label="الكمية" value={item.quantity} onChangeText={(value) => updateItem(index, 'quantity', value)} keyboardType="number-pad" /></View><View style={{ flex: 1 }}><Field label="سعر العميل" value={item.sellingPrice} onChangeText={(value) => updateItem(index, 'sellingPrice', value)} keyboardType="decimal-pad" /></View></View><View style={{ flexDirection: 'row', gap: 8 }}><View style={{ flex: 1 }}><Field label="العمولة لكل قطعة" value={item.commission} onChangeText={(value) => updateItem(index, 'commission', value)} keyboardType="decimal-pad" placeholder="5" /></View><View style={{ flex: 1 }}><Field label="تكلفة SHEIN" value={item.sheinCost} onChangeText={(value) => updateItem(index, 'sheinCost', value)} keyboardType="decimal-pad" /></View></View>{itemsDraft.length > 1 ? <PrimaryButton title="حذف المنتج" onPress={() => setItemsDraft((all) => all.filter((_, itemIndex) => itemIndex !== index))} variant="ghost" icon="trash-2" /> : null}</Card>)}
-          <PrimaryButton title="إضافة منتج آخر" onPress={() => setItemsDraft((all) => [...all, { name: '', quantity: '1', sellingPrice: '', commission: '', sheinCost: '' }])} variant="secondary" icon="plus" />
+          {itemsDraft.map((item, index) => <Card key={index} style={{ backgroundColor: colors.background }}><Text style={{ color: colors.foreground, fontWeight: '800', marginBottom: 10 }}>{`المنتج ${index + 1}`}</Text><Field label="اسم المنتج" value={item.name} onChangeText={(value) => updateItem(index, 'name', value)} placeholder="مثال: فستان صيفي" /><View style={{ flexDirection: 'row', gap: 8 }}><View style={{ flex: 1 }}><Field label="الكمية" value={item.quantity} onChangeText={(value) => updateItem(index, 'quantity', value)} keyboardType="number-pad" /></View><View style={{ flex: 1 }}><Field label="سعر العميل" value={item.sellingPrice} onChangeText={(value) => updateItem(index, 'sellingPrice', value)} keyboardType="decimal-pad" /></View></View><View style={{ flexDirection: 'row', gap: 8 }}><View style={{ flex: 1 }}><Field label="العمولة لكل قطعة" value={item.commission} onChangeText={(value) => updateItem(index, 'commission', value)} keyboardType="decimal-pad" placeholder="5" /></View><View style={{ flex: 1 }}><Field label="تكلفة SHEIN" value={item.sheinCost} onChangeText={(value) => updateItem(index, 'sheinCost', value)} keyboardType="decimal-pad" /></View></View><Field label="رابط القطعة" value={item.productUrl} onChangeText={(value) => updateItem(index, 'productUrl', value)} keyboardType="url" placeholder="https://..." /><Field label="رابط الصورة" value={item.imagePath} onChangeText={(value) => updateItem(index, 'imagePath', value)} keyboardType="url" placeholder="https://..." />{item.imagePath ? <Image source={{ uri: item.imagePath }} style={{ width: '100%', height: 180, borderRadius: 14 }} resizeMode="cover" /> : null}{itemsDraft.length > 1 ? <PrimaryButton title="حذف المنتج" onPress={() => setItemsDraft((all) => all.filter((_, itemIndex) => itemIndex !== index))} variant="ghost" icon="trash-2" /> : null}</Card>)}
+          <PrimaryButton title="إضافة منتج آخر" onPress={() => setItemsDraft((all) => [...all, { name: '', quantity: '1', sellingPrice: '', commission: '', sheinCost: '', productUrl: '', imagePath: '' }])} variant="secondary" icon="plus" />
           {message ? <Text style={{ color: colors.destructive, marginTop: 12, marginBottom: 12 }}>{message}</Text> : null}
           <View style={{ marginTop: 10 }}><PrimaryButton title={create.isPending ? 'جارٍ حفظ الطلب...' : 'حفظ الطلب'} onPress={save} disabled={create.isPending} icon="save" /></View>
         </KeyboardAwareScrollViewCompat>

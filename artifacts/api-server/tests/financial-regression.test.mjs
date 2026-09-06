@@ -176,7 +176,7 @@ describe("financial record edit and delete invariants", () => {
 
     let customerAfterPayment = await expectStatus(`/customers/${created.customerId}`, undefined, 200);
     closeTo(customerAfterPayment.totalPaid, 120, "customer balance after payment");
-    closeTo(customerAfterPayment.remaining, 90, "customer remaining after payment");
+    closeTo(customerAfterPayment.remaining, 110, "customer remaining after payment");
 
     await expectStatus(`/payments/${created.paymentId}`, {
       method: "PATCH",
@@ -197,7 +197,7 @@ describe("financial record edit and delete invariants", () => {
     closeTo(linkedTransactions(currentWallet, "relatedPaymentId", created.paymentId)[0].amount, 75, "edited payment ledger amount");
     customerAfterPayment = await expectStatus(`/customers/${created.customerId}`, undefined, 200);
     closeTo(customerAfterPayment.totalPaid, 75, "customer balance after payment edit");
-    closeTo(customerAfterPayment.remaining, 135, "customer remaining after payment edit");
+    closeTo(customerAfterPayment.remaining, 155, "customer remaining after payment edit");
 
     await expectStatus(`/payments/${created.paymentId}`, { method: "DELETE" }, 204);
     currentWallet = await wallet();
@@ -205,7 +205,7 @@ describe("financial record edit and delete invariants", () => {
     assert.equal(linkedTransactions(currentWallet, "relatedPaymentId", created.paymentId).length, 0);
     customerAfterPayment = await expectStatus(`/customers/${created.customerId}`, undefined, 200);
     closeTo(customerAfterPayment.totalPaid, 0, "customer balance after payment deletion");
-    closeTo(customerAfterPayment.remaining, 210, "customer remaining after payment deletion");
+    closeTo(customerAfterPayment.remaining, 230, "customer remaining after payment deletion");
     const reportBeforeManualExpense = await report();
 
     const manualExpense = await expectStatus("/wallet", {
