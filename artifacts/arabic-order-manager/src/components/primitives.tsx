@@ -49,7 +49,7 @@ export function UploadField({ label = "ملف أو صورة", value, onChange, a
     setStatus("uploading"); setMessage("");
     try {
       const result = await requestUploadUrl({ name: file.name, size: file.size, contentType: file.type || "application/octet-stream" });
-      const response = await fetch(result.uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type || "application/octet-stream" } });
+      const response = await fetch(result.uploadURL, { method: "PUT", body: file, credentials: "include", headers: { "Content-Type": file.type || "application/octet-stream" } });
       if (!response.ok) throw new Error(`upload failed: ${response.status}`);
       onChange(result.objectPath); setStatus("idle"); setMessage("تم رفع الملف");
     } catch {

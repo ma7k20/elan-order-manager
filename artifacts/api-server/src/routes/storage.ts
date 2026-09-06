@@ -3,7 +3,7 @@ import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
 } from '@workspace/api-zod';
-import { Router, type IRouter, type Request, type Response } from 'express';
+import { raw, Router, type IRouter, type Request, type Response } from 'express';
 
 import { ObjectPermission } from '../lib/objectAcl';
 import {
@@ -36,20 +36,48 @@ router.post(
     try {
       const { name, size, contentType } = parsed.data;
 
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      const objectPath =
-        objectStorageService.normalizeObjectEntityPath(uploadURL);
+      const origin = `${req.protocol}://${req.get('host')}`;
+      const target = objectStorageService.getCloudinaryUploadTarget(origin, contentType);
 
       res.json(
         RequestUploadUrlResponse.parse({
-          uploadURL,
-          objectPath,
+          uploadURL: target.uploadURL,
+          objectPath: target.objectPath,
           metadata: { name, size, contentType },
         }),
       );
     } catch (error) {
       req.log.error({ err: error }, 'Error generating upload URL');
       res.status(500).json({ error: 'Failed to generate upload URL' });
+    }
+  },
+);
+
+router.put(
+  '/storage/uploads/:resourceType/:id',
+  requireAuth,
+  raw({ type: ['application/octet-stream', 'image/*', 'application/pdf'], limit: '10mb' }),
+  async (req: Request<{ resourceType: string; id: string }>, res: Response) => {
+    try {
+      if (!['image', 'raw'].includes(req.params.resourceType)) {
+        res.status(400).json({ error: 'Invalid resource type' });
+        return;
+      }
+      const body = Buffer.isBuffer(req.body) ? req.body : Buffer.from([]);
+      if (!body.length) {
+        res.status(400).json({ error: 'Empty upload' });
+        return;
+      }
+      await objectStorageService.uploadToCloudinary(
+        req.params.resourceType,
+        `elan/uploads/${req.params.id}`,
+        body,
+        req.headers['content-type'] || 'application/octet-stream',
+      );
+      res.sendStatus(204);
+    } catch (error) {
+      req.log.error({ err: error }, 'Error uploading object to Cloudinary');
+      res.status(500).json({ error: 'Failed to upload file' });
     }
   },
 );

@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { Readable } from 'stream';
 import { File, Storage } from '@google-cloud/storage';
 
@@ -40,6 +40,50 @@ export class ObjectNotFoundError extends Error {
 
 export class ObjectStorageService {
   constructor() {}
+
+  private getCloudinaryConfig() {
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    if (!cloudName || !apiKey || !apiSecret) {
+      throw new Error('Cloudinary storage is not configured');
+    }
+    return { cloudName, apiKey, apiSecret };
+  }
+
+  getCloudinaryUploadTarget(origin: string, contentType: string) {
+    const { cloudName } = this.getCloudinaryConfig();
+    const resourceType = contentType.startsWith('image/') ? 'image' : 'raw';
+    const id = randomUUID();
+    const publicId = `elan/uploads/${id}`;
+    const deliveryOptions = resourceType === 'image' ? '/f_auto,q_auto' : '';
+    const objectPath = `https://res.cloudinary.com/${cloudName}/${resourceType}/upload${deliveryOptions}/${publicId}`;
+    return {
+      uploadURL: `${origin}/api/storage/uploads/${resourceType}/${id}`,
+      objectPath,
+      publicId,
+      resourceType,
+    };
+  }
+
+  async uploadToCloudinary(resourceType: string, publicId: string, body: Buffer, contentType: string) {
+    const { cloudName, apiKey, apiSecret } = this.getCloudinaryConfig();
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signature = createHash('sha1')
+      .update(`public_id=${publicId}&timestamp=${timestamp}${apiSecret}`)
+      .digest('hex');
+    const form = new FormData();
+    form.append('file', new Blob([body], { type: contentType }), publicId.split('/').pop() || 'upload');
+    form.append('public_id', publicId);
+    form.append('timestamp', String(timestamp));
+    form.append('api_key', apiKey);
+    form.append('signature', signature);
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, { method: 'POST', body: form });
+    if (!response.ok) {
+      const detail = (await response.text()).slice(0, 500);
+      throw new Error(`Cloudinary upload failed (${response.status}): ${detail}`);
+    }
+  }
 
   getPublicObjectSearchPaths(): Array<string> {
     const pathsStr = process.env.PUBLIC_OBJECT_SEARCH_PATHS || '';
