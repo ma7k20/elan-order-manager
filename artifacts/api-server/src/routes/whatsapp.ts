@@ -35,6 +35,15 @@ router.post("/whatsapp/webhook", async (req, res): Promise<void> => {
   const signature = req.header("x-hub-signature-256");
   const rawBody = (req as typeof req & { rawBody?: Buffer }).rawBody;
 
+  req.log.info(
+    {
+      hasSignature: Boolean(signature),
+      rawBodyLength: rawBody?.length ?? 0,
+      contentType: req.headers["content-type"],
+    },
+    "WhatsApp webhook received",
+  );
+
   if (!appSecret) {
     res.status(503).json({
       error: "WhatsApp webhook signature verification is not configured",

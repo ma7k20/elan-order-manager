@@ -56,7 +56,7 @@ router.get("/ai/status", async (_req, res) => {
     db.select({ value: count() }).from(conversations).where(eq(conversations.handoffStatus, "human_requested")),
     db.select({ lastMessageAt: conversations.lastMessageAt }).from(conversations).orderBy(desc(conversations.lastMessageAt)).limit(1),
   ]);
-  res.json(GetAiStatusResponse.parse({ geminiConnected: Boolean(process.env.AI_INTEGRATIONS_GEMINI_API_KEY), whatsappConnected: Boolean(process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID), webhookConfigured: Boolean(process.env.WHATSAPP_VERIFY_TOKEN), lastMessageAt: latest[0]?.lastMessageAt ?? null, conversationCount: Number(conversationCount.value), messageCount: Number(messageCount.value), handoffCount: Number(handoffCount.value) }));
+  res.json(GetAiStatusResponse.parse({ geminiConnected: Boolean(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY), whatsappConnected: Boolean(process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID), webhookConfigured: Boolean(process.env.WHATSAPP_VERIFY_TOKEN), lastMessageAt: latest[0]?.lastMessageAt ?? null, conversationCount: Number(conversationCount.value), messageCount: Number(messageCount.value), handoffCount: Number(handoffCount.value) }));
 });
 router.get("/ai/settings", requireAccountAdmin, async (_req, res) => res.json(GetAiSettingsResponse.parse(await getAiSettings())));
 router.patch("/ai/settings", requireAccountAdmin, async (req, res): Promise<void> => {
