@@ -59,7 +59,7 @@ router.post(
 );
 
 router.put(
-  '/storage/uploads/:id',
+  '/uploads/:id',
   raw({ type: ['application/octet-stream', 'image/*', 'application/pdf'], limit: '10mb' }),
   async (req: Request<{ id: string }>, res: Response) => {
     try {

@@ -56,7 +56,7 @@ export class ObjectStorageService {
     const id = randomUUID();
     const objectPath = `${url}/storage/v1/object/public/${bucket}/uploads/${id}`;
     return {
-      uploadURL: `${origin}/api/storage/uploads/${id}`,
+      uploadURL: `${origin}/api/uploads/${id}`,
       objectPath,
       objectId: `uploads/${id}`,
     };
