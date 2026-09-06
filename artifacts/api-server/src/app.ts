@@ -7,6 +7,9 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+// API responses must include their JSON body; a 304 has no body for the client cache layer.
+app.set('etag', false);
+
 app.use(
   pinoHttp({
     logger,
