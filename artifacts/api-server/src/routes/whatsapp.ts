@@ -130,6 +130,15 @@ router.post("/whatsapp/webhook", async (req, res): Promise<void> => {
         !incoming?.text?.body ||
         !incoming?.id
       ) {
+        req.log.warn(
+          {
+            hasFrom: incoming?.from !== undefined,
+            type: incoming?.type,
+            hasTextBody: Boolean(incoming?.text?.body),
+            hasMessageId: Boolean(incoming?.id),
+          },
+          "WhatsApp message skipped because required fields are missing",
+        );
         continue;
       }
 
@@ -140,6 +149,7 @@ router.post("/whatsapp/webhook", async (req, res): Promise<void> => {
         .limit(1);
 
       if (duplicate[0]) {
+        req.log.info("WhatsApp duplicate message skipped");
         continue;
       }
 
@@ -163,6 +173,7 @@ router.post("/whatsapp/webhook", async (req, res): Promise<void> => {
       }
 
       try {
+        req.log.info("WhatsApp text message processing started");
         const answer = await replyToConversation(
           conversation.id,
           incoming.text.body,
