@@ -106,6 +106,19 @@ router.post("/whatsapp/webhook", async (req, res): Promise<void> => {
   const changes = (req.body?.entry ?? []).flatMap(
     (entry: any) => entry.changes ?? [],
   );
+  const receivedMessages = changes.flatMap(
+    (change: any) => change?.value?.messages ?? [],
+  );
+
+  req.log.info(
+    {
+      entryCount: Array.isArray(req.body?.entry) ? req.body.entry.length : 0,
+      changeCount: changes.length,
+      messageCount: receivedMessages.length,
+      textMessageCount: receivedMessages.filter((message: any) => message?.type === "text").length,
+    },
+    "WhatsApp webhook payload accepted",
+  );
 
   for (const change of changes) {
     const value = change?.value;
