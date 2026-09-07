@@ -56,6 +56,8 @@ export const ordersTable = pgTable("orders", {
   status: varchar("status", { length: 40 }).notNull().default("active"),
   deliveryMethod: varchar("delivery_method", { length: 20 }).notNull().default("pickup"),
   deliveryFee: numeric("delivery_fee", { precision: 12, scale: 2, mode: "number" }).notNull().default(0),
+  discountPercentage: numeric("discount_percentage", { precision: 5, scale: 2, mode: "number" }).notNull().default(0),
+  coordinationExpenses: numeric("coordination_expenses", { precision: 12, scale: 2, mode: "number" }).notNull().default(0),
   deliveryAddress: text("delivery_address"),
   notes: text("notes"),
   ...auditFields,

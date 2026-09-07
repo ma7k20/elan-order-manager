@@ -69,8 +69,12 @@ export interface OrderSummary {
   status: string;
   deliveryMethod: string;
   deliveryFee: number;
+  discountPercentage: number;
+  discountAmount: number;
+  coordinationExpenses: number;
   totalSelling: number;
   totalCommission: number;
+  totalDue: number;
   totalSheinCost: number;
   totalPaid: number;
   remaining: number;
@@ -115,8 +119,6 @@ export interface OrderItemInput {
   sellingPrice: number;
   /** @minimum 0 */
   commission: number;
-  /** @minimum 0 */
-  sheinCost: number;
   /** @nullable */
   notes?: string | null;
 }
@@ -135,6 +137,8 @@ export interface OrderInput {
   deliveryMethod: OrderInputDeliveryMethod;
   /** @minimum 0 */
   deliveryFee?: number;
+  discountPercentage?: number;
+  coordinationExpenses?: number;
   /** @nullable */
   deliveryAddress?: string | null;
   /** @nullable */
@@ -157,6 +161,8 @@ export interface OrderUpdate {
   deliveryMethod?: OrderUpdateDeliveryMethod;
   /** @minimum 0 */
   deliveryFee?: number;
+  discountPercentage?: number;
+  coordinationExpenses?: number;
   /** @nullable */
   deliveryAddress?: string | null;
   /** @nullable */
@@ -504,6 +510,7 @@ export interface ReportSummary {
   walletBalance: number;
   revenue: number;
   productCosts: number;
+  coordinationExpenses: number;
   commission: number;
   profit: number;
   customerBalances: number;

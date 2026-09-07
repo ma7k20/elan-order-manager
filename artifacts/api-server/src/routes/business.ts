@@ -131,8 +131,10 @@ async function orderDto(orderId: number) {
   const arrivedCount = mapped.filter((item) => ["arrived", "arrived_waiting", "delivered"].includes(item.productStatus)).length;
   const missingCount = mapped.filter((item) => item.productStatus === "not_arrived").length;
   const deliveredCount = mapped.filter((item) => item.deliveryStatus === "delivered").length;
-  const orderTotal = totalSelling + n(rows[0].order.deliveryFee);
-  const paymentShare = orderTotal ? Math.min(1, paid / orderTotal) : 0;
+  const discountPercentage = n(rows[0].order.discountPercentage);
+  const discountAmount = totalSelling * discountPercentage / 100;
+  const totalDue = totalSelling - discountAmount + n(rows[0].order.deliveryFee);
+  const paymentShare = totalDue ? Math.min(1, paid / totalDue) : 0;
   return {
     id: rows[0].order.id,
     orderNumber: rows[0].order.orderNumber,
@@ -143,13 +145,17 @@ async function orderDto(orderId: number) {
     status: rows[0].order.status,
     deliveryMethod: rows[0].order.deliveryMethod,
     deliveryFee: n(rows[0].order.deliveryFee),
+    discountPercentage,
+    discountAmount,
+    coordinationExpenses: n(rows[0].order.coordinationExpenses),
     deliveryAddress: rows[0].order.deliveryAddress,
     notes: rows[0].order.notes,
     totalSelling,
     totalCommission,
     totalSheinCost,
+    totalDue,
     totalPaid: paid,
-    remaining: Math.max(0, totalSelling + n(rows[0].order.deliveryFee) - paid),
+    remaining: Math.max(0, totalDue - paid),
     itemCount: mapped.length,
     arrivedCount,
     missingCount,
@@ -171,9 +177,13 @@ async function orderSummary(orderId: number) {
     status: detail.status,
     deliveryMethod: detail.deliveryMethod,
     deliveryFee: detail.deliveryFee,
+    discountPercentage: detail.discountPercentage,
+    discountAmount: detail.discountAmount,
+    coordinationExpenses: detail.coordinationExpenses,
     totalSelling: detail.totalSelling,
     totalCommission: detail.totalCommission,
     totalSheinCost: detail.totalSheinCost,
+    totalDue: detail.totalDue,
     totalPaid: detail.totalPaid,
     remaining: detail.remaining,
     itemCount: detail.itemCount,
@@ -185,6 +195,7 @@ async function orderSummary(orderId: number) {
 
 router.get("/dashboard", async (req, res): Promise<void> => {
   const orders = await db.select().from(ordersTable).orderBy(desc(ordersTable.createdAt));
+  const purchases = await db.select().from(sheinPurchasesTable);
   const transactions = await db.select().from(walletTransactionsTable).where(eq(walletTransactionsTable.status, "confirmed"));
   const items = await db.select().from(orderItemsTable);
   const payments = await db.select({ payment: paymentsTable, customerName: customersTable.name })
@@ -199,8 +210,14 @@ router.get("/dashboard", async (req, res): Promise<void> => {
   const income = transactions.filter((t) => t.type === "income").reduce((sum, t) => sum + n(t.amount), 0);
   const expenses = transactions.filter((t) => t.type === "expense").reduce((sum, t) => sum + n(t.amount), 0);
   const nonPurchaseExpenses = transactions.filter((t) => t.type === "expense" && t.category !== "shein_purchase").reduce((sum, t) => sum + n(t.amount), 0);
-  const revenue = orders.reduce((sum, order) => sum + n(order.deliveryFee), 0) + items.reduce((sum, item) => sum + (n(item.sellingPrice) + n(item.commission)) * item.quantity, 0);
-  const productCosts = items.reduce((sum, item) => sum + n(item.sheinCost) * item.quantity, 0);
+  const grossRevenue = items.reduce((sum, item) => sum + (n(item.sellingPrice) + n(item.commission)) * item.quantity, 0);
+  const discounts = orders.reduce((sum, order) => {
+    const orderGross = items.filter((item) => item.orderId === order.id).reduce((total, item) => total + (n(item.sellingPrice) + n(item.commission)) * item.quantity, 0);
+    return sum + orderGross * n(order.discountPercentage) / 100;
+  }, 0);
+  const revenue = grossRevenue - discounts;
+  const productCosts = purchases.filter((purchase) => purchase.status !== "cancelled").reduce((sum, purchase) => sum + n(purchase.totalAmount), 0);
+  const coordinationExpenses = orders.reduce((sum, order) => sum + n(order.coordinationExpenses), 0);
   const totalPaid = transactions.filter((t) => t.type === "income").reduce((sum, t) => sum + n(t.amount), 0);
   const dashboard = {
     walletBalance: income - expenses,
@@ -212,7 +229,7 @@ router.get("/dashboard", async (req, res): Promise<void> => {
     waitingProducts: items.filter((i) => i.productStatus === "requested" || i.productStatus === "in_shipping").length,
     arrivedUndelivered: items.filter((i) => ["arrived", "arrived_waiting"].includes(i.productStatus) && i.deliveryStatus !== "delivered").length,
     shipmentsInTransit: shipments.filter((s) => ["sent", "in_transit"].includes(s.status)).length,
-    estimatedProfit: revenue - productCosts - nonPurchaseExpenses,
+    estimatedProfit: revenue - productCosts - coordinationExpenses - nonPurchaseExpenses,
     commission: items.reduce((sum, item) => sum + n(item.commission) * item.quantity, 0),
     recentOrders: (await Promise.all(orders.slice(0, 5).map((o) => orderSummary(o.id)))).filter(Boolean),
     recentPayments: payments.map(({ payment, customerName }) => ({
@@ -344,11 +361,11 @@ router.post("/orders", async (req: AuthenticatedRequest, res): Promise<void> => 
     const [order] = await tx.insert(ordersTable).values({
       orderNumber: `ORD-${Date.now().toString().slice(-6)}`,
       customerId: parsed.data.customerId, orderDate: dateOnly(parsed.data.orderDate)!, deliveryMethod: parsed.data.deliveryMethod,
-      deliveryFee: parsed.data.deliveryFee ?? 0, deliveryAddress: parsed.data.deliveryAddress, notes: parsed.data.notes, createdBy: req.userId,
+      deliveryFee: parsed.data.deliveryFee ?? 0, discountPercentage: parsed.data.discountPercentage ?? 0, coordinationExpenses: parsed.data.coordinationExpenses ?? 0, deliveryAddress: parsed.data.deliveryAddress, notes: parsed.data.notes, createdBy: req.userId,
     }).returning();
     await tx.insert(orderItemsTable).values(parsed.data.items.map((item) => ({
       orderId: order.id, customerId: parsed.data.customerId, imagePath: item.imagePath, name: item.name, productUrl: item.productUrl,
-      quantity: item.quantity, sellingPrice: item.sellingPrice, commission: item.commission, sheinCost: item.sheinCost, notes: item.notes, createdBy: req.userId,
+      quantity: item.quantity, sellingPrice: item.sellingPrice, commission: item.commission, notes: item.notes, createdBy: req.userId,
     })));
     await tx.insert(auditLogsTable).values({ userId: req.userId, action: "created", entity: "order", entityId: order.id, description: `تم إنشاء الطلب ${order.orderNumber}` });
     return order;
@@ -374,6 +391,8 @@ router.patch("/orders/:id", async (req: AuthenticatedRequest, res): Promise<void
     status: body.data.status,
     deliveryMethod: body.data.deliveryMethod,
     deliveryFee: body.data.deliveryFee,
+    discountPercentage: body.data.discountPercentage,
+    coordinationExpenses: body.data.coordinationExpenses,
     deliveryAddress: body.data.deliveryAddress,
     notes: body.data.notes,
     updatedAt: new Date(),
@@ -829,14 +848,24 @@ router.get("/reports/summary", async (req, res): Promise<void> => {
   const transactions = await db.select().from(walletTransactionsTable);
   const items = await db.select().from(orderItemsTable);
   const orders = await db.select().from(ordersTable);
+  const purchases = await db.select().from(sheinPurchasesTable);
   const income = transactions.filter((t) => t.status === "confirmed" && t.type === "income" && t.transactionDate >= from && t.transactionDate <= to).reduce((sum, t) => sum + n(t.amount), 0);
   const expenses = transactions.filter((t) => t.status === "confirmed" && t.type === "expense" && t.transactionDate >= from && t.transactionDate <= to).reduce((sum, t) => sum + n(t.amount), 0);
   const nonPurchaseExpenses = transactions.filter((t) => t.status === "confirmed" && t.type === "expense" && t.category !== "shein_purchase" && t.transactionDate >= from && t.transactionDate <= to).reduce((sum, t) => sum + n(t.amount), 0);
-  const revenue = orders.filter((o) => o.orderDate >= from && o.orderDate <= to).reduce((sum, o) => sum + n(o.deliveryFee), 0) + items.reduce((sum, i) => sum + (n(i.sellingPrice) + n(i.commission)) * i.quantity, 0);
-  const productCosts = items.reduce((sum, i) => sum + n(i.sheinCost) * i.quantity, 0);
+  const periodOrders = orders.filter((order) => order.orderDate >= from && order.orderDate <= to);
+  const periodOrderIds = new Set(periodOrders.map((order) => order.id));
+  const periodItems = items.filter((item) => periodOrderIds.has(item.orderId));
+  const grossRevenue = periodItems.reduce((sum, item) => sum + (n(item.sellingPrice) + n(item.commission)) * item.quantity, 0);
+  const discounts = periodOrders.reduce((sum, order) => {
+    const orderGross = periodItems.filter((item) => item.orderId === order.id).reduce((total, item) => total + (n(item.sellingPrice) + n(item.commission)) * item.quantity, 0);
+    return sum + orderGross * n(order.discountPercentage) / 100;
+  }, 0);
+  const revenue = grossRevenue - discounts;
+  const productCosts = purchases.filter((purchase) => purchase.status !== "cancelled" && purchase.purchaseDate >= from && purchase.purchaseDate <= to).reduce((sum, purchase) => sum + n(purchase.totalAmount), 0);
+  const coordinationExpenses = periodOrders.reduce((sum, order) => sum + n(order.coordinationExpenses), 0);
   const walletIncome = transactions.filter((t) => t.status === "confirmed" && t.type === "income").reduce((sum, t) => sum + n(t.amount), 0);
   const walletExpenses = transactions.filter((t) => t.status === "confirmed" && t.type === "expense").reduce((sum, t) => sum + n(t.amount), 0);
-  res.json({ from, to, income, expenses, walletBalance: walletIncome - walletExpenses, revenue, productCosts, commission: items.reduce((sum, i) => sum + n(i.commission) * i.quantity, 0), profit: revenue - productCosts - nonPurchaseExpenses, customerBalances: Math.max(0, revenue - walletIncome), missingProducts: items.filter((i) => i.productStatus === "not_arrived").length, awaitingDelivery: items.filter((i) => i.deliveryStatus !== "delivered" && i.productStatus === "arrived").length, breakdown: [
+  res.json({ from, to, income, expenses, walletBalance: walletIncome - walletExpenses, revenue, productCosts, coordinationExpenses, commission: periodItems.reduce((sum, i) => sum + n(i.commission) * i.quantity, 0), profit: revenue - productCosts - coordinationExpenses - nonPurchaseExpenses, customerBalances: Math.max(0, revenue - walletIncome), missingProducts: items.filter((i) => i.productStatus === "not_arrived").length, awaitingDelivery: items.filter((i) => i.deliveryStatus !== "delivered" && i.productStatus === "arrived").length, breakdown: [
     { label: "دفعات الزبائن", income, expenses: 0 }, { label: "مشتريات شي إن", income: 0, expenses: productCosts }, { label: "مصروفات أخرى", income: 0, expenses: nonPurchaseExpenses },
   ] });
 });

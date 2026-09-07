@@ -361,6 +361,10 @@ export const ListOrdersResponse = zod.array(ListOrdersResponseItem)
  */
 export const createOrderBodyDeliveryFeeMin = 0;
 
+export const createOrderBodyDiscountPercentageMin = 0;
+export const createOrderBodyDiscountPercentageMax = 100;
+export const createOrderBodyCoordinationExpensesMin = 0;
+
 
 
 export const createOrderBodyItemsItemSellingPriceMin = 0;
@@ -377,6 +381,8 @@ export const CreateOrderBody = zod.object({
   "orderDate": zod.coerce.date(),
   "deliveryMethod": zod.enum(['pickup', 'delivery']),
   "deliveryFee": zod.number().min(createOrderBodyDeliveryFeeMin).optional(),
+  "discountPercentage": zod.number().min(createOrderBodyDiscountPercentageMin).max(createOrderBodyDiscountPercentageMax).optional(),
+  "coordinationExpenses": zod.number().min(createOrderBodyCoordinationExpensesMin).optional(),
   "deliveryAddress": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "items": zod.array(zod.object({
@@ -386,7 +392,6 @@ export const CreateOrderBody = zod.object({
   "quantity": zod.number().int().min(1),
   "sellingPrice": zod.number().min(createOrderBodyItemsItemSellingPriceMin),
   "commission": zod.number().min(createOrderBodyItemsItemCommissionMin),
-  "sheinCost": zod.number().min(createOrderBodyItemsItemSheinCostMin),
   "notes": zod.string().nullish()
 })).min(1)
 })
@@ -501,6 +506,10 @@ export const UpdateOrderParams = zod.object({
 
 export const updateOrderBodyDeliveryFeeMin = 0;
 
+export const updateOrderBodyDiscountPercentageMin = 0;
+export const updateOrderBodyDiscountPercentageMax = 100;
+export const updateOrderBodyCoordinationExpensesMin = 0;
+
 
 
 export const UpdateOrderBody = zod.object({
@@ -508,6 +517,8 @@ export const UpdateOrderBody = zod.object({
   "status": zod.string().optional(),
   "deliveryMethod": zod.enum(['pickup', 'delivery']).optional(),
   "deliveryFee": zod.number().min(updateOrderBodyDeliveryFeeMin).optional(),
+  "discountPercentage": zod.number().min(updateOrderBodyDiscountPercentageMin).max(updateOrderBodyDiscountPercentageMax).optional(),
+  "coordinationExpenses": zod.number().min(updateOrderBodyCoordinationExpensesMin).optional(),
   "deliveryAddress": zod.string().nullish(),
   "notes": zod.string().nullish()
 })
@@ -1336,6 +1347,7 @@ export const GetReportSummaryResponse = zod.object({
   "walletBalance": zod.number(),
   "revenue": zod.number(),
   "productCosts": zod.number(),
+  "coordinationExpenses": zod.number(),
   "commission": zod.number(),
   "profit": zod.number(),
   "customerBalances": zod.number(),

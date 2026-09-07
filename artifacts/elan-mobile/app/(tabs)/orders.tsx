@@ -7,7 +7,7 @@ import { useColors } from '@/hooks/useColors';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { useQueryClient } from '@tanstack/react-query';
 
-type ItemDraft = { name: string; quantity: string; sellingPrice: string; commission: string; sheinCost: string; productUrl: string; imagePath: string };
+type ItemDraft = { name: string; quantity: string; sellingPrice: string; commission: string; productUrl: string; imagePath: string };
 
 export default function OrdersScreen() {
   const colors = useColors();
@@ -22,7 +22,9 @@ export default function OrdersScreen() {
   const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'delivery'>('pickup');
   const [deliveryFee, setDeliveryFee] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [itemsDraft, setItemsDraft] = useState<ItemDraft[]>([{ name: '', quantity: '1', sellingPrice: '', commission: '', sheinCost: '', productUrl: '', imagePath: '' }]);
+  const [itemsDraft, setItemsDraft] = useState<ItemDraft[]>([{ name: '', quantity: '1', sellingPrice: '', commission: '', productUrl: '', imagePath: '' }]);
+  const [discountPercentage, setDiscountPercentage] = useState('');
+  const [coordinationExpenses, setCoordinationExpenses] = useState('');
   const [message, setMessage] = useState('');
 
   const updateItem = (index: number, key: keyof ItemDraft, value: string) => setItemsDraft((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item));
@@ -39,7 +41,7 @@ export default function OrdersScreen() {
     ]);
   };
   const save = () => {
-    const valid = customerId && itemsDraft.every((item) => item.name.trim() && Number(item.sellingPrice) >= 0 && Number(item.sheinCost) >= 0);
+    const valid = customerId && itemsDraft.every((item) => item.name.trim() && Number(item.sellingPrice) >= 0);
     if (!valid) { setMessage('اختر العميل وأكمل اسم المنتج والسعر وتكلفة SHEIN.'); return; }
     setMessage('');
     create.mutate({
@@ -49,10 +51,12 @@ export default function OrdersScreen() {
         deliveryMethod,
         deliveryFee: deliveryMethod === 'delivery' ? Number(deliveryFee || 0) : 0,
         deliveryAddress: deliveryMethod === 'delivery' ? deliveryAddress.trim() || null : null,
-        items: itemsDraft.map((item) => ({ name: item.name.trim(), quantity: Math.max(1, Number(item.quantity) || 1), sellingPrice: Number(item.sellingPrice), commission: Number(item.commission || 0), sheinCost: Number(item.sheinCost), productUrl: item.productUrl.trim() || null, imagePath: item.imagePath.trim() || null })),
+        discountPercentage: Number(discountPercentage || 0),
+        coordinationExpenses: Number(coordinationExpenses || 0),
+        items: itemsDraft.map((item) => ({ name: item.name.trim(), quantity: Math.max(1, Number(item.quantity) || 1), sellingPrice: Number(item.sellingPrice), commission: Number(item.commission || 0), productUrl: item.productUrl.trim() || null, imagePath: item.imagePath.trim() || null })),
       },
     }, {
-      onSuccess: () => { queryClient.invalidateQueries(); setOpen(false); setCustomerId(null); setItemsDraft([{ name: '', quantity: '1', sellingPrice: '', commission: '', sheinCost: '', productUrl: '', imagePath: '' }]); setDeliveryFee(''); setDeliveryAddress(''); },
+      onSuccess: () => { queryClient.invalidateQueries(); setOpen(false); setCustomerId(null); setItemsDraft([{ name: '', quantity: '1', sellingPrice: '', commission: '', productUrl: '', imagePath: '' }]); setDeliveryFee(''); setDeliveryAddress(''); setDiscountPercentage(''); setCoordinationExpenses(''); },
       onError: () => setMessage('تعذر حفظ الطلب. تحقق من البيانات والاتصال.'),
     });
   };
@@ -119,8 +123,9 @@ export default function OrdersScreen() {
             {([['pickup', 'تسليم شخصي'], ['delivery', 'Delivery'] ] as const).map(([value, label]) => <Pressable key={value} onPress={() => setDeliveryMethod(value)} style={{ flex: 1, paddingVertical: 12, borderRadius: 13, borderWidth: 1, borderColor: deliveryMethod === value ? colors.primary : colors.border, backgroundColor: deliveryMethod === value ? colors.secondary : colors.background, alignItems: 'center' }}><Text style={{ color: colors.foreground, fontWeight: '800' }}>{label}</Text></Pressable>)}
           </View>
           {deliveryMethod === 'delivery' ? <><Field label="رسوم التوصيل (تضاف على الفاتورة)" value={deliveryFee} onChangeText={setDeliveryFee} keyboardType="decimal-pad" placeholder="10" /><Field label="عنوان التوصيل" value={deliveryAddress} onChangeText={setDeliveryAddress} placeholder="العنوان الكامل" /></> : null}
-          {itemsDraft.map((item, index) => <Card key={index} style={{ backgroundColor: colors.background }}><Text style={{ color: colors.foreground, fontWeight: '800', marginBottom: 10 }}>{`المنتج ${index + 1}`}</Text><Field label="اسم المنتج" value={item.name} onChangeText={(value) => updateItem(index, 'name', value)} placeholder="مثال: فستان صيفي" /><View style={{ flexDirection: 'row', gap: 8 }}><View style={{ flex: 1 }}><Field label="الكمية" value={item.quantity} onChangeText={(value) => updateItem(index, 'quantity', value)} keyboardType="number-pad" /></View><View style={{ flex: 1 }}><Field label="سعر العميل" value={item.sellingPrice} onChangeText={(value) => updateItem(index, 'sellingPrice', value)} keyboardType="decimal-pad" /></View></View><View style={{ flexDirection: 'row', gap: 8 }}><View style={{ flex: 1 }}><Field label="العمولة لكل قطعة" value={item.commission} onChangeText={(value) => updateItem(index, 'commission', value)} keyboardType="decimal-pad" placeholder="5" /></View><View style={{ flex: 1 }}><Field label="تكلفة SHEIN" value={item.sheinCost} onChangeText={(value) => updateItem(index, 'sheinCost', value)} keyboardType="decimal-pad" /></View></View><Field label="رابط القطعة" value={item.productUrl} onChangeText={(value) => updateItem(index, 'productUrl', value)} keyboardType="url" placeholder="https://..." /><Field label="رابط الصورة" value={item.imagePath} onChangeText={(value) => updateItem(index, 'imagePath', value)} keyboardType="url" placeholder="https://..." />{item.imagePath ? <Image source={{ uri: item.imagePath }} style={{ width: '100%', height: 180, borderRadius: 14 }} resizeMode="cover" /> : null}{itemsDraft.length > 1 ? <PrimaryButton title="حذف المنتج" onPress={() => setItemsDraft((all) => all.filter((_, itemIndex) => itemIndex !== index))} variant="ghost" icon="trash-2" /> : null}</Card>)}
-          <PrimaryButton title="إضافة منتج آخر" onPress={() => setItemsDraft((all) => [...all, { name: '', quantity: '1', sellingPrice: '', commission: '', sheinCost: '', productUrl: '', imagePath: '' }])} variant="secondary" icon="plus" />
+          <View style={{ flexDirection: 'row', gap: 8 }}><View style={{ flex: 1 }}><Field label="الخصم (%)" value={discountPercentage} onChangeText={setDiscountPercentage} keyboardType="decimal-pad" placeholder="0" /></View><View style={{ flex: 1 }}><Field label="مصاريف التنسيقات" value={coordinationExpenses} onChangeText={setCoordinationExpenses} keyboardType="decimal-pad" placeholder="0" /></View></View>
+          {itemsDraft.map((item, index) => <Card key={index} style={{ backgroundColor: colors.background }}><Text style={{ color: colors.foreground, fontWeight: '800', marginBottom: 10 }}>{`المنتج ${index + 1}`}</Text><Field label="اسم المنتج" value={item.name} onChangeText={(value) => updateItem(index, 'name', value)} placeholder="مثال: فستان صيفي" /><View style={{ flexDirection: 'row', gap: 8 }}><View style={{ flex: 1 }}><Field label="الكمية" value={item.quantity} onChangeText={(value) => updateItem(index, 'quantity', value)} keyboardType="number-pad" /></View><View style={{ flex: 1 }}><Field label="سعر العميل" value={item.sellingPrice} onChangeText={(value) => updateItem(index, 'sellingPrice', value)} keyboardType="decimal-pad" /></View></View><Field label="العمولة لكل قطعة" value={item.commission} onChangeText={(value) => updateItem(index, 'commission', value)} keyboardType="decimal-pad" placeholder="5" /><Field label="رابط القطعة" value={item.productUrl} onChangeText={(value) => updateItem(index, 'productUrl', value)} keyboardType="url" placeholder="https://..." /><Field label="رابط الصورة" value={item.imagePath} onChangeText={(value) => updateItem(index, 'imagePath', value)} keyboardType="url" placeholder="https://..." />{item.imagePath ? <Image source={{ uri: item.imagePath }} style={{ width: '100%', height: 180, borderRadius: 14 }} resizeMode="cover" /> : null}{itemsDraft.length > 1 ? <PrimaryButton title="حذف المنتج" onPress={() => setItemsDraft((all) => all.filter((_, itemIndex) => itemIndex !== index))} variant="ghost" icon="trash-2" /> : null}</Card>)}
+          <PrimaryButton title="إضافة منتج آخر" onPress={() => setItemsDraft((all) => [...all, { name: '', quantity: '1', sellingPrice: '', commission: '', productUrl: '', imagePath: '' }])} variant="secondary" icon="plus" />
           {message ? <Text style={{ color: colors.destructive, marginTop: 12, marginBottom: 12 }}>{message}</Text> : null}
           <View style={{ marginTop: 10 }}><PrimaryButton title={create.isPending ? 'جارٍ حفظ الطلب...' : 'حفظ الطلب'} onPress={save} disabled={create.isPending} icon="save" /></View>
         </KeyboardAwareScrollViewCompat>

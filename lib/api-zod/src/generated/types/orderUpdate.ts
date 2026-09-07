@@ -13,6 +13,10 @@ export interface OrderUpdate {
   deliveryMethod?: OrderUpdateDeliveryMethod;
   /** @minimum 0 */
   deliveryFee?: number;
+  /** @minimum 0 @maximum 100 */
+  discountPercentage?: number;
+  /** @minimum 0 */
+  coordinationExpenses?: number;
   /** @nullable */
   deliveryAddress?: string | null;
   /** @nullable */
