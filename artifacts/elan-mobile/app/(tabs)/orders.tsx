@@ -25,6 +25,9 @@ export default function OrdersScreen() {
   const [itemsDraft, setItemsDraft] = useState<ItemDraft[]>([{ name: '', quantity: '1', sellingPrice: '', commission: '', productUrl: '', imagePath: '' }]);
   const [discountPercentage, setDiscountPercentage] = useState('');
   const [coordinationExpenses, setCoordinationExpenses] = useState('');
+  const [editingOrder, setEditingOrder] = useState<NonNullable<typeof orders.data>[number] | null>(null);
+  const [editDiscount, setEditDiscount] = useState('');
+  const [editCoordination, setEditCoordination] = useState('');
   const [message, setMessage] = useState('');
 
   const updateItem = (index: number, key: keyof ItemDraft, value: string) => setItemsDraft((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item));
@@ -39,6 +42,18 @@ export default function OrdersScreen() {
       { text: 'تراجع', style: 'cancel' },
       { text: 'حذف', style: 'destructive', onPress: () => remove.mutate({ id: orderId }, { onSuccess: () => queryClient.invalidateQueries(), onError: () => Alert.alert('تعذر الحذف', 'الطلب مرتبط بسجلات مالية أو مشتريات؛ استخدم إلغاء الطلب بدلاً من الحذف.') }) },
     ]);
+  };
+  const openEdit = (order: NonNullable<typeof orders.data>[number]) => {
+    setEditingOrder(order);
+    setEditDiscount(String(order.discountPercentage || 0));
+    setEditCoordination(String(order.coordinationExpenses || 0));
+  };
+  const saveEdit = () => {
+    if (!editingOrder) return;
+    update.mutate({ id: editingOrder.id, data: { discountPercentage: Number(editDiscount || 0), coordinationExpenses: Number(editCoordination || 0) } }, {
+      onSuccess: () => { queryClient.invalidateQueries(); setEditingOrder(null); },
+      onError: () => setMessage('تعذر تعديل الطلب الآن.'),
+    });
   };
   const save = () => {
     const valid = customerId && itemsDraft.every((item) => item.name.trim() && Number(item.sellingPrice) >= 0);
@@ -97,6 +112,9 @@ export default function OrdersScreen() {
             <Text style={{ color: colors.foreground, fontWeight: '700' }}>{order.status === 'active' ? 'نشط' : order.status}</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
+            <Pressable onPress={() => openEdit(order)} disabled={update.isPending} style={{ flex: 1, borderWidth: 1, borderColor: colors.primary, borderRadius: 12, paddingVertical: 10, flexDirection: 'row', gap: 7, alignItems: 'center', justifyContent: 'center', opacity: update.isPending ? 0.5 : 1 }}>
+              <Feather name="edit-2" size={15} color={colors.primary} /><Text style={{ color: colors.primary, fontWeight: '700' }}>تعديل</Text>
+            </Pressable>
             {order.status !== 'cancelled' ? <Pressable onPress={() => cancelOrder(order.id)} disabled={update.isPending} style={{ flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingVertical: 10, flexDirection: 'row', gap: 7, alignItems: 'center', justifyContent: 'center', opacity: update.isPending ? 0.5 : 1 }}>
               <Feather name="x-circle" size={15} color={colors.warning} /><Text style={{ color: colors.foreground, fontWeight: '700' }}>إلغاء</Text>
             </Pressable> : null}
@@ -129,6 +147,19 @@ export default function OrdersScreen() {
           {message ? <Text style={{ color: colors.destructive, marginTop: 12, marginBottom: 12 }}>{message}</Text> : null}
           <View style={{ marginTop: 10 }}><PrimaryButton title={create.isPending ? 'جارٍ حفظ الطلب...' : 'حفظ الطلب'} onPress={save} disabled={create.isPending} icon="save" /></View>
         </KeyboardAwareScrollViewCompat>
+      </View>
+    </Modal>
+    <Modal visible={!!editingOrder} animationType="slide" transparent onRequestClose={() => setEditingOrder(null)}>
+      <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay }}>
+        <View style={{ padding: 20, paddingBottom: 35, backgroundColor: colors.card, borderTopLeftRadius: 26, borderTopRightRadius: 26 }}>
+          <Text style={{ color: colors.foreground, fontSize: 21, fontWeight: '800', marginBottom: 18 }}>تعديل الطلب</Text>
+          <Field label="الخصم (%)" value={editDiscount} onChangeText={setEditDiscount} keyboardType="decimal-pad" />
+          <Field label="مصاريف التنسيقات" value={editCoordination} onChangeText={setEditCoordination} keyboardType="decimal-pad" />
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+            <View style={{ flex: 1 }}><PrimaryButton title="إلغاء" onPress={() => setEditingOrder(null)} variant="ghost" /></View>
+            <View style={{ flex: 1 }}><PrimaryButton title={update.isPending ? 'جارٍ الحفظ...' : 'حفظ التعديل'} onPress={saveEdit} disabled={update.isPending} icon="save" /></View>
+          </View>
+        </View>
       </View>
     </Modal>
     </>
