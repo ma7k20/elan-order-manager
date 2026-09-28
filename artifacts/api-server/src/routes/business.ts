@@ -269,8 +269,8 @@ router.get("/customers", async (req, res): Promise<void> => {
   const result = await Promise.all(customers.map(async (customer) => {
     const orders = await db.select({ id: ordersTable.id, status: ordersTable.status }).from(ordersTable).where(eq(ordersTable.customerId, customer.id));
     const payments = await db.select({ amount: paymentsTable.amount }).from(paymentsTable).where(and(eq(paymentsTable.customerId, customer.id), eq(paymentsTable.status, "confirmed")));
-    const charged = await db.select({ total: sql<number>`coalesce(sum((${orderItemsTable.sellingPrice} + ${orderItemsTable.commission}) * ${orderItemsTable.quantity}), 0)` }).from(orderItemsTable).where(eq(orderItemsTable.customerId, customer.id));
-    const totalCharged = n(charged[0]?.total) + n((await db.select({ fee: sql<number>`coalesce(sum(${ordersTable.deliveryFee}), 0)` }).from(ordersTable).where(eq(ordersTable.customerId, customer.id)))[0]?.fee);
+    const orderSummaries = (await Promise.all(orders.map((order) => orderSummary(order.id)))).filter(Boolean);
+    const totalCharged = orderSummaries.reduce((sum, order) => sum + (order?.totalDue ?? 0), 0);
     const totalPaid = payments.reduce((sum, p) => sum + n(p.amount), 0);
     return { ...customer, totalOrders: orders.length, activeOrders: orders.filter((order) => !["completed", "cancelled"].includes(order.status)).length, totalCharged, totalPaid, remaining: Math.max(0, totalCharged - totalPaid) };
   }));
@@ -293,7 +293,7 @@ router.get("/customers/:id", async (req, res): Promise<void> => {
   const orderRows = await db.select({ id: ordersTable.id }).from(ordersTable).where(eq(ordersTable.customerId, customer.id));
   const orders = (await Promise.all(orderRows.map((o) => orderSummary(o.id)))).filter(Boolean);
   const payments = await db.select({ payment: paymentsTable, customerName: customersTable.name }).from(paymentsTable).innerJoin(customersTable, eq(customersTable.id, paymentsTable.customerId)).where(eq(paymentsTable.customerId, customer.id)).orderBy(desc(paymentsTable.createdAt));
-  const totalCharged = orders.reduce((sum, o) => sum + (o?.totalSelling ?? 0) + (o?.deliveryFee ?? 0), 0);
+  const totalCharged = orders.reduce((sum, o) => sum + (o?.totalDue ?? 0), 0);
   const totalPaid = payments.filter(({ payment }) => payment.status === "confirmed").reduce((sum, { payment }) => sum + n(payment.amount), 0);
   res.json({ ...customer, totalOrders: orders.length, activeOrders: orders.filter((o) => o?.status !== "completed").length, totalCharged, totalPaid, remaining: Math.max(0, totalCharged - totalPaid), orders, payments: payments.map(({ payment, customerName }) => ({ ...payment, customerName, amount: n(payment.amount) })) });
 });
@@ -307,9 +307,8 @@ router.patch("/customers/:id", async (req: AuthenticatedRequest, res): Promise<v
   await audit(req.userId, "updated", "customer", customer.id, `تم تعديل الزبون ${customer.name}`);
   const orders = await db.select({ id: ordersTable.id, status: ordersTable.status }).from(ordersTable).where(eq(ordersTable.customerId, customer.id));
   const payments = await db.select({ amount: paymentsTable.amount }).from(paymentsTable).where(and(eq(paymentsTable.customerId, customer.id), eq(paymentsTable.status, "confirmed")));
-  const charged = await db.select({ total: sql<number>`coalesce(sum((${orderItemsTable.sellingPrice} + ${orderItemsTable.commission}) * ${orderItemsTable.quantity}), 0)` }).from(orderItemsTable).where(eq(orderItemsTable.customerId, customer.id));
-  const delivery = await db.select({ fee: sql<number>`coalesce(sum(${ordersTable.deliveryFee}), 0)` }).from(ordersTable).where(eq(ordersTable.customerId, customer.id));
-  const totalCharged = n(charged[0]?.total) + n(delivery[0]?.fee);
+  const orderSummaries = (await Promise.all(orders.map((order) => orderSummary(order.id)))).filter(Boolean);
+  const totalCharged = orderSummaries.reduce((sum, order) => sum + (order?.totalDue ?? 0), 0);
   const totalPaid = payments.reduce((sum, payment) => sum + n(payment.amount), 0);
   res.json({ ...customer, totalOrders: orders.length, activeOrders: orders.filter((order) => !["completed", "cancelled"].includes(order.status)).length, totalCharged, totalPaid, remaining: Math.max(0, totalCharged - totalPaid) });
 });
