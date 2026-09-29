@@ -363,9 +363,18 @@ router.post("/orders", async (req: AuthenticatedRequest, res): Promise<void> => 
       deliveryFee: parsed.data.deliveryFee ?? 0, discountPercentage: parsed.data.discountPercentage ?? 0, coordinationExpenses: parsed.data.coordinationExpenses ?? 0, deliveryAddress: parsed.data.deliveryAddress, notes: parsed.data.notes, createdBy: req.userId,
     }).returning();
     await tx.insert(orderItemsTable).values(parsed.data.items.map((item) => ({
-      orderId: order.id, customerId: parsed.data.customerId, imagePath: item.imagePath, name: item.name, productUrl: item.productUrl,
-      quantity: item.quantity, sellingPrice: item.sellingPrice, commission: item.commission, notes: item.notes, createdBy: req.userId,
-    })));
+  orderId: order.id,
+  customerId: parsed.data.customerId,
+  imagePath: item.imagePath,
+  name: item.name,
+  productUrl: item.productUrl,
+  quantity: item.quantity,
+  sellingPrice: item.sellingPrice,
+  commission: item.commission,
+  sheinCost: item.sheinCost ?? 0,
+  notes: item.notes,
+  createdBy: req.userId,
+})));
     await tx.insert(auditLogsTable).values({ userId: req.userId, action: "created", entity: "order", entityId: order.id, description: `تم إنشاء الطلب ${order.orderNumber}` });
     return order;
   });

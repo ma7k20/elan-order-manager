@@ -3,7 +3,7 @@ import { Link, useLocation, useParams } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowDownLeft, ArrowUpLeft, Check, ChevronLeft, CircleAlert, CircleDollarSign, Download, Edit3, Filter, Package, Plus, Receipt, ShoppingCart, Trash2, TrendingUp, Truck, UserRound, WalletCards } from "lucide-react";
 import {
-  getExportReportQueryKey, getGetCustomerQueryKey, getGetDashboardQueryKey, getGetOrderQueryKey, getGetReportSummaryQueryKey, getGetSettingsQueryKey, getGetWalletQueryKey, getListAuditLogsQueryKey, getListCustomersQueryKey, getListOrdersQueryKey, getListPaymentsQueryKey, getListPurchasesQueryKey, getListShipmentsQueryKey,
+  customFetch, getExportReportQueryKey, getGetCustomerQueryKey, getGetDashboardQueryKey, getGetOrderQueryKey, getGetReportSummaryQueryKey, getGetSettingsQueryKey, getGetWalletQueryKey, getListAuditLogsQueryKey, getListCustomersQueryKey, getListOrdersQueryKey, getListPaymentsQueryKey, getListPurchasesQueryKey, getListShipmentsQueryKey,
   useCreateCustomer, useCreateOrder, useCreatePayment, useCreatePurchase, useCreateShipment, useCreateWalletAdjustment, useCreateWalletTransaction, useDeletePayment, useDeletePurchase, useDeleteShipment, useDeleteWalletTransaction, useGetCustomer, useGetDashboard, useGetOrder, useGetReportSummary, useGetSettings, useGetWallet, useListAuditLogs, useListCustomers, useListOrders, useListPayments, useListPurchases, useListShipments, useUpdateCustomer, useUpdateOrderItem, useUpdatePayment, useUpdatePurchase, useUpdateSettings, useUpdateShipment, useUpdateWalletTransaction, useExportReport, type Payment, type SheinPurchase, type Shipment, type WalletTransaction
 } from "@workspace/api-client-react";
 import { AppShell } from "@/components/app-shell";
@@ -92,11 +92,132 @@ export function OrdersPage() {
 }
 
 export function NewOrderPage() {
-  const [, setLocation] = useLocation(); const customers = useListCustomers(undefined, { query: { queryKey: getListCustomersQueryKey(undefined) } }); const create = useCreateOrder(); const [items, setItems] = useState([{ name: "", quantity: 1, sellingPrice: "", commission: "", sheinCost: "", productUrl: "", imagePath: "", notes: "" }]); const [error, setError] = useState("");
+  const [, setLocation] = useLocation(); const customers = useListCustomers(undefined, { query: { queryKey: getListCustomersQueryKey(undefined) } }); const create = useCreateOrder(); const [items, setItems] = useState([{ name: "", quantity: 1, sellingPrice: "", commission: "",  productUrl: "", imagePath: "", notes: "" }]); const [error, setError] = useState("");
+  const [sheinUrl, setSheinUrl] = useState("");
+  const [sheinImporting, setSheinImporting] = useState(false);
+  const [sheinImportMessage, setSheinImportMessage] = useState("");
   const updateItem = (i: number, key: string, value: string) => setItems((all) => all.map((x, n) => n === i ? { ...x, [key]: value } : x));
   const total = items.reduce((s, x) => s + (Number(x.sellingPrice || 0) + Number(x.commission || 0)) * Number(x.quantity || 0), 0);
+  const importSheinCart = async () => {
+  if (!sheinUrl.trim()) {
+    setSheinImportMessage("الصق رابط سلة SHEIN أولاً");
+    return;
+  }
+
+  try {
+    setSheinImporting(true);
+    setSheinImportMessage("");
+
+    const result = await customFetch<{
+      success: boolean;
+      cart: {
+        groupId: string;
+        count: number;
+        availableCount: number;
+      };
+      items: Array<{
+        sheinProductId: string;
+        sheinSn: string;
+        sku: string;
+        name: string;
+        color: string;
+        size: string;
+        image: string;
+        productUrl: string;
+        quantity: number;
+        stock: number | null;
+        soldOut: boolean;
+        status: string;
+      }>;
+    }>("/api/shein/import-cart", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url: sheinUrl.trim(),
+      }),
+    });
+
+    const availableItems = result.items.filter((item) => !item.soldOut);
+
+    const importedItems = availableItems.map((item) => ({
+      name: item.name || `منتج SHEIN ${item.sku}`,
+      quantity: 1,
+      sellingPrice: "",
+      commission: "",
+      productUrl: item.productUrl || "",
+      imagePath: item.image || "",
+      notes: [
+        item.sku ? `SKU: ${item.sku}` : "",
+        item.color ? `اللون: ${item.color}` : "",
+        item.size ? `المقاس: ${item.size}` : "",
+      ]
+        .filter(Boolean)
+        .join(" | "),
+    }));
+
+    if (importedItems.length === 0) {
+      setSheinImportMessage("لم يتم العثور على منتجات متاحة في السلة");
+      return;
+    }
+
+    setItems(importedItems);
+
+    const unavailableCount = result.items.length - availableItems.length;
+
+    setSheinImportMessage(
+      unavailableCount > 0
+        ? `تم استيراد ${availableItems.length} منتج، وتم تجاهل ${unavailableCount} منتج غير متاح`
+        : `تم استيراد ${availableItems.length} منتج بنجاح`
+    );
+  } catch (err: any) {
+    console.error("SHEIN IMPORT ERROR:", err);
+
+    setSheinImportMessage(
+      err?.message || "تعذر استيراد سلة SHEIN"
+    );
+  } finally {
+    setSheinImporting(false);
+  }
+};
   const submit = (e: FormEvent<HTMLFormElement>) => { e.preventDefault(); const f = new FormData(e.currentTarget); if (!String(f.get("customerId"))) return setError("اختر العميل أولاً"); if (items.some((x) => !x.name || !x.sellingPrice)) return setError("أكمل اسم المنتج والسعر المحصل لكل منتج"); setError(""); create.mutate({ data: { customerId: Number(f.get("customerId")), orderDate: String(f.get("orderDate")), deliveryMethod: String(f.get("deliveryMethod")) as "pickup" | "delivery", deliveryFee: Number(f.get("deliveryFee") || 0), discountPercentage: Number(f.get("discountPercentage") || 0), coordinationExpenses: Number(f.get("coordinationExpenses") || 0), deliveryAddress: String(f.get("deliveryAddress") || "") || null, notes: String(f.get("notes") || "") || null, items: items.map((x) => ({ name: x.name, quantity: Number(x.quantity), sellingPrice: Number(x.sellingPrice), commission: Number(x.commission || 0), productUrl: x.productUrl || null, imagePath: x.imagePath || null, notes: x.notes || null })) } }, { onSuccess: (o) => setLocation(`/orders/${o.id}`) }); };
-  return <AppPage><div className="mb-5 flex items-center gap-2 text-xs text-muted-foreground"><Link href="/orders" className="hover:text-primary" data-testid="link-back-orders">الطلبات</Link><ChevronLeft size={13}/><span>طلب جديد</span></div><PageHeader eyebrow="عملية جديدة" title="تسجيل طلب عميل" description="سجّل السعر المحصل وتكلفة SHEIN الفعلية منفصلين — هذا ما يحفظ دقة الربح."/><form onSubmit={submit}><div className="grid gap-5 xl:grid-cols-[1fr_330px]"><div className="space-y-5"><SectionCard title="بيانات الطلب"><div className="grid gap-4 p-5 sm:grid-cols-2"><Select label="العميل" name="customerId" required data-testid="select-order-customer"><option value="">اختر العميل...</option>{safeArray(customers.data).map((c) => <option value={c.id} key={c.id}>{c.name} · {c.phone}</option>)}</Select><Input label="تاريخ الطلب" name="orderDate" type="date" defaultValue={today} required data-testid="input-order-date"/><Select label="طريقة الاستلام" name="deliveryMethod" defaultValue="pickup" data-testid="select-delivery-method"><option value="pickup">استلام من الشراكة</option><option value="delivery">توصيل للعميل</option></Select><Input label="رسوم التوصيل" name="deliveryFee" type="number" min="0" step="0.01" defaultValue="0" data-testid="input-delivery-fee"/><div className="sm:col-span-2"><Input label="عنوان التسليم" name="deliveryAddress" placeholder="يُستخدم عند اختيار التوصيل"/><div className="mt-4"><Textarea label="ملاحظات الطلب" name="notes" placeholder="أي تفاصيل مهمة للشريك الآخر..."/></div></div></div></SectionCard><SectionCard title="منتجات الطلب" action={<Button type="button" variant="secondary" onClick={() => setItems((x) => [...x, { name: "", quantity: 1, sellingPrice: "", commission: "", sheinCost: "", productUrl: "", imagePath: "", notes: "" }])} className="min-h-9 px-3 text-xs" data-testid="button-add-order-item"><Plus size={14}/> منتج</Button>}><div className="space-y-4 p-5">{items.map((item, i) => <div key={i} className="rounded-xl border border-border bg-background/60 p-4" data-testid={`card-order-item-${i}`}><div className="mb-3 flex items-center justify-between"><span className="text-xs font-bold text-muted-foreground">منتج {i + 1}</span>{items.length > 1 && <button type="button" onClick={() => setItems((x) => x.filter((_, n) => n !== i))} className="text-xs font-bold text-destructive" data-testid={`button-remove-order-item-${i}`}>إزالة</button>}</div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Input label="اسم المنتج" value={item.name} onChange={(e) => updateItem(i, "name", e.target.value)} required data-testid={`input-item-name-${i}`}/><Input label="الكمية" type="number" min="1" value={item.quantity} onChange={(e) => updateItem(i, "quantity", e.target.value)} required/><Input label="السعر المحصل" type="number" min="0" step="0.01" value={item.sellingPrice} onChange={(e) => updateItem(i, "sellingPrice", e.target.value)} required/><Input label="تكلفة SHEIN الفعلية" type="number" min="0" step="0.01" value={item.sheinCost} onChange={(e) => updateItem(i, "sheinCost", e.target.value)} required/><Input label="عمولة الشراكة" type="number" min="0" step="0.01" value={item.commission} onChange={(e) => updateItem(i, "commission", e.target.value)}/><Input label="رابط المنتج" value={item.productUrl} onChange={(e) => updateItem(i, "productUrl", e.target.value)} className="sm:col-span-2" placeholder="https://..."/><UploadField label="صورة المنتج" value={item.imagePath} onChange={(path) => updateItem(i, "imagePath", path)}/></div></div>)}</div></SectionCard></div><aside className="h-fit rounded-2xl bg-primary p-5 text-primary-foreground shadow-lg shadow-primary/10 xl:sticky xl:top-24"><p className="text-xs font-bold text-primary-foreground/65">ملخص الطلب</p><div className="mt-7 space-y-4 border-b border-primary-foreground/15 pb-5"><div className="flex justify-between text-sm"><span className="text-primary-foreground/70">عدد المنتجات</span><strong>{items.length}</strong></div><div className="flex justify-between text-sm"><span className="text-primary-foreground/70">الوحدات</span><strong>{items.reduce((s, x) => s + Number(x.quantity || 0), 0)}</strong></div></div><div className="mt-5 flex items-end justify-between"><span className="text-xs text-primary-foreground/70">إجمالي السعر المحصل</span><strong className="font-display text-2xl" dir="ltr"><Money value={total} sign/></strong></div>{error && <p className="mt-4 rounded-lg bg-destructive/30 px-3 py-2 text-xs font-bold" data-testid="status-order-form-error">{error}</p>}<Button type="submit" disabled={create.isPending} className="mt-7 w-full bg-secondary text-secondary-foreground hover:brightness-95" data-testid="button-submit-order">{create.isPending && <Spinner/>} حفظ الطلب</Button><Link href="/orders" className="mt-3 block text-center text-xs font-bold text-primary-foreground/60 hover:text-primary-foreground" data-testid="link-cancel-order">إلغاء</Link></aside></div></form></AppPage>;
+  return <AppPage><div className="mb-5 flex items-center gap-2 text-xs text-muted-foreground"><Link href="/orders" className="hover:text-primary" data-testid="link-back-orders">الطلبات</Link><ChevronLeft size={13}/><span>طلب جديد</span></div><PageHeader eyebrow="عملية جديدة" title="تسجيل طلب عميل" description="سجّل منتجات العميل والسعر المحصل والعمولة لكل قطعة."/><form onSubmit={submit}><div className="grid gap-5 xl:grid-cols-[1fr_330px]"><div className="space-y-5"><SectionCard title="بيانات الطلب"><div className="grid gap-4 p-5 sm:grid-cols-2"><Select label="العميل" name="customerId" required data-testid="select-order-customer"><option value="">اختر العميل...</option>{safeArray(customers.data).map((c) => <option value={c.id} key={c.id}>{c.name} · {c.phone}</option>)}</Select><Input label="تاريخ الطلب" name="orderDate" type="date" defaultValue={today} required data-testid="input-order-date"/><Select label="طريقة الاستلام" name="deliveryMethod" defaultValue="pickup" data-testid="select-delivery-method"><option value="pickup">استلام من الشراكة</option><option value="delivery">توصيل للعميل</option></Select><Input label="رسوم التوصيل" name="deliveryFee" type="number" min="0" step="0.01" defaultValue="0" data-testid="input-delivery-fee"/><div className="sm:col-span-2"><Input label="عنوان التسليم" name="deliveryAddress" placeholder="يُستخدم عند اختيار التوصيل"/><div className="mt-4"><Textarea label="ملاحظات الطلب" name="notes" placeholder="أي تفاصيل مهمة للشريك الآخر..."/></div></div></div></SectionCard><SectionCard title="استيراد من SHEIN">
+  <div className="p-5">
+    <p className="mb-3 text-sm text-muted-foreground">
+      الصق رابط السلة المشتركة من SHEIN وسيتم جلب المنتجات والصور والروابط تلقائيًا.
+    </p>
+
+    <div className="flex flex-col gap-3 sm:flex-row">
+      <Input
+        value={sheinUrl}
+        onChange={(e) => setSheinUrl(e.target.value)}
+        placeholder="https://onelink.shein.com/..."
+        className="flex-1"
+      />
+
+      <Button
+        type="button"
+        onClick={importSheinCart}
+        disabled={sheinImporting || !sheinUrl.trim()}
+        className="shrink-0"
+      >
+        {sheinImporting && <Spinner />}
+        {sheinImporting ? "جاري الاستيراد..." : "استيراد من SHEIN"}
+      </Button>
+    </div>
+
+    {sheinImportMessage && (
+      <div className="mt-3 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm font-bold">
+        {sheinImportMessage}
+      </div>
+    )}
+  </div>
+</SectionCard><SectionCard title="منتجات الطلب" action={<Button type="button" variant="secondary" onClick={() => setItems((x) => [...x, { name: "", quantity: 1, sellingPrice: "", commission: "",  productUrl: "", imagePath: "", notes: "" }])} className="min-h-9 px-3 text-xs" data-testid="button-add-order-item"><Plus size={14}/> منتج</Button>}><div className="space-y-4 p-5">{items.map((item, i) => <div key={i} className="rounded-xl border border-border bg-background/60 p-4" data-testid={`card-order-item-${i}`}><div className="mb-3 flex items-center justify-between"><span className="text-xs font-bold text-muted-foreground">منتج {i + 1}</span>{items.length > 1 && <button type="button" onClick={() => setItems((x) => x.filter((_, n) => n !== i))} className="text-xs font-bold text-destructive" data-testid={`button-remove-order-item-${i}`}>إزالة</button>}</div>{item.notes && (
+  <div className="mb-3 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs font-bold text-muted-foreground">
+    {item.notes}
+  </div>
+)}<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Input label="اسم المنتج" value={item.name} onChange={(e) => updateItem(i, "name", e.target.value)} required data-testid={`input-item-name-${i}`}/><Input label="الكمية" type="number" min="1" value={item.quantity} onChange={(e) => updateItem(i, "quantity", e.target.value)} required/><Input label="السعر المحصل" type="number" min="0" step="0.01" value={item.sellingPrice} onChange={(e) => updateItem(i, "sellingPrice", e.target.value)} required/><Input label="العمولة " type="number" min="0" step="0.01" value={item.commission} onChange={(e) => updateItem(i, "commission", e.target.value)}/><Input label="رابط المنتج" value={item.productUrl} onChange={(e) => updateItem(i, "productUrl", e.target.value)} className="sm:col-span-2" placeholder="https://..."/><UploadField label="صورة المنتج" value={item.imagePath} onChange={(path) => updateItem(i, "imagePath", path)}/></div></div>)}</div></SectionCard></div><aside className="h-fit rounded-2xl bg-primary p-5 text-primary-foreground shadow-lg shadow-primary/10 xl:sticky xl:top-24"><p className="text-xs font-bold text-primary-foreground/65">ملخص الطلب</p><div className="mt-7 space-y-4 border-b border-primary-foreground/15 pb-5"><div className="flex justify-between text-sm"><span className="text-primary-foreground/70">عدد المنتجات</span><strong>{items.length}</strong></div><div className="flex justify-between text-sm"><span className="text-primary-foreground/70">الوحدات</span><strong>{items.reduce((s, x) => s + Number(x.quantity || 0), 0)}</strong></div></div><div className="mt-5 flex items-end justify-between"><span className="text-xs text-primary-foreground/70">إجمالي السعر المحصل</span><strong className="font-display text-2xl" dir="ltr"><Money value={total} sign/></strong></div>{error && <p className="mt-4 rounded-lg bg-destructive/30 px-3 py-2 text-xs font-bold" data-testid="status-order-form-error">{error}</p>}<Button type="submit" disabled={create.isPending} className="mt-7 w-full bg-secondary text-secondary-foreground hover:brightness-95" data-testid="button-submit-order">{create.isPending && <Spinner/>} حفظ الطلب</Button><Link href="/orders" className="mt-3 block text-center text-xs font-bold text-primary-foreground/60 hover:text-primary-foreground" data-testid="link-cancel-order">إلغاء</Link></aside></div></form></AppPage>;
 }
 
 export function OrderDetailsPage() {
