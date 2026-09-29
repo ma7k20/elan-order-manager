@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ArrowDownLeft, ArrowUpLeft, Check, ChevronLeft, CircleAlert, CircleDollarSign, Download, Edit3, Filter, Package, Plus, Receipt, ShoppingCart, Trash2, TrendingUp, Truck, UserRound, WalletCards } from "lucide-react";
 import {
   customFetch, getExportReportQueryKey, getGetCustomerQueryKey, getGetDashboardQueryKey, getGetOrderQueryKey, getGetReportSummaryQueryKey, getGetSettingsQueryKey, getGetWalletQueryKey, getListAuditLogsQueryKey, getListCustomersQueryKey, getListOrdersQueryKey, getListPaymentsQueryKey, getListPurchasesQueryKey, getListShipmentsQueryKey,
-  useCreateCustomer, useCreateOrder, useCreatePayment, useCreatePurchase, useCreateShipment, useCreateWalletAdjustment, useCreateWalletTransaction, useDeletePayment, useDeletePurchase, useDeleteShipment, useDeleteWalletTransaction, useGetCustomer, useGetDashboard, useGetOrder, useGetReportSummary, useGetSettings, useGetWallet, useListAuditLogs, useListCustomers, useListOrders, useListPayments, useListPurchases, useListShipments, useUpdateCustomer, useUpdateOrderItem, useUpdatePayment, useUpdatePurchase, useUpdateSettings, useUpdateShipment, useUpdateWalletTransaction, useExportReport, type Payment, type SheinPurchase, type Shipment, type WalletTransaction
+  useCreateCustomer, useCreateOrder, useCreatePayment, useCreatePurchase, useCreateShipment, useCreateWalletAdjustment, useCreateWalletTransaction, useDeletePayment, useDeletePurchase, useDeleteShipment, useDeleteWalletTransaction, useGetCustomer, useGetDashboard, useGetOrder, useGetReportSummary, useGetSettings, useGetWallet, useListAuditLogs, useListCustomers, useListOrders, useListPayments, useListPurchases, useListShipments, useUpdateCustomer, useUpdateOrderItem, useDeleteOrder, useUpdatePayment, useUpdatePurchase, useUpdateSettings, useUpdateShipment, useUpdateWalletTransaction, useExportReport, type Payment, type SheinPurchase, type Shipment, type WalletTransaction
 } from "@workspace/api-client-react";
 import { AppShell } from "@/components/app-shell";
 import { AccountManagement } from "@/components/account-management";
@@ -221,10 +221,260 @@ export function NewOrderPage() {
 }
 
 export function OrderDetailsPage() {
-  const { id } = useParams<{ id: string }>(); const orderId = Number(id); const q = useGetOrder(orderId, { query: { queryKey: getGetOrderQueryKey(orderId) } }); const updateItem = useUpdateOrderItem(); const qc = useQueryClient(); const [flash, setFlash] = useState(""); const o = q.data;
+  const { id } = useParams<{ id: string }>(); const orderId = Number(id); const q = useGetOrder(orderId, { query: { queryKey: getGetOrderQueryKey(orderId) } }); const updateItem = useUpdateOrderItem(); const deleteOrder = useDeleteOrder(); const qc = useQueryClient(); const [flash, setFlash] = useState(""); const o = q.data;
+  
+  const [editingItem, setEditingItem] = useState<any | null>(null);
+const [editForm, setEditForm] = useState({
+  name: "",
+  quantity: 1,
+  sellingPrice: 0,
+  commission: 0,
+  productUrl: "",
+  imagePath: "",
+  notes: "",
+});
+
+const openEditItem = (item: any) => {
+  setEditingItem(item);
+
+  setEditForm({
+    name: item.name || "",
+    quantity: Number(item.quantity || 1),
+    sellingPrice: Number(item.sellingPrice || 0),
+    commission: Number(item.commission || 0),
+    productUrl: item.productUrl || "",
+    imagePath: item.imagePath || "",
+    notes: item.notes || "",
+  });
+};
+
+const saveEditedItem = () => {
+  if (!editingItem) return;
+
+  updateItem.mutate(
+    {
+      id: orderId,
+      itemId: editingItem.id,
+      data: {
+        name: editForm.name.trim(),
+        quantity: Number(editForm.quantity),
+        sellingPrice: Number(editForm.sellingPrice),
+        commission: Number(editForm.commission),
+        productUrl: editForm.productUrl.trim() || null,
+        imagePath: editForm.imagePath || null,
+        notes: editForm.notes.trim() || null,
+      },
+    },
+    {
+      onSuccess: () => {
+        qc.invalidateQueries({
+          queryKey: getGetOrderQueryKey(orderId),
+        });
+
+        setEditingItem(null);
+        setFlash("تم تعديل القطعة بنجاح");
+
+        setTimeout(() => setFlash(""), 2200);
+      },
+    },
+  );
+};
+const handleDeleteOrder = () => {
+  if (
+    !window.confirm(
+      "هل أنت متأكد من حذف الطلب بالكامل؟\n\nسيتم حذف جميع القطع الموجودة داخله ولا يمكن التراجع عن العملية."
+    )
+  ) {
+    return;
+  }
+
+  deleteOrder.mutate(
+    { id: orderId },
+    {
+      onSuccess: () => {
+        window.location.assign("/orders");
+      },
+      onError: (error: any) => {
+        setFlash(
+          error?.message ||
+            "تعذر حذف الطلب. قد يكون الطلب مرتبطًا بدفعات أو مشتريات."
+        );
+        setTimeout(() => setFlash(""), 3500);
+      },
+    }
+  );
+};
+const handleDeleteItem = async (item: any) => {
+  if (
+    !window.confirm(
+      `هل أنت متأكد من حذف القطعة "${item.name}" من الطلب؟`
+    )
+  ) {
+    return;
+  }
+
+  try {
+    await customFetch(`/api/orders/${orderId}/items/${item.id}`, {
+      method: "DELETE",
+    });
+
+    await qc.invalidateQueries({
+      queryKey: getGetOrderQueryKey(orderId),
+    });
+
+    setFlash("تم حذف القطعة بنجاح");
+    setTimeout(() => setFlash(""), 2200);
+  } catch (error: any) {
+    setFlash(
+      error?.message ||
+        "تعذر حذف القطعة. قد تكون مرتبطة بفاتورة شراء SHEIN."
+    );
+    setTimeout(() => setFlash(""), 3500);
+  }
+};
   if (q.isLoading) return <AppPage><PageSkeleton/></AppPage>; if (q.isError || !o) return <AppPage><QueryState isError onRetry={() => q.refetch()}/></AppPage>;
   const saveStatus = (itemId: number, productStatus: string, deliveryStatus: string) => updateItem.mutate({ id: orderId, itemId, data: { productStatus, deliveryStatus } }, { onSuccess: () => { qc.invalidateQueries({ queryKey: getGetOrderQueryKey(orderId) }); setFlash("تم تحديث حالة المنتج"); setTimeout(() => setFlash(""), 2200); } });
-  return <AppPage><div className="mb-5 flex items-center gap-2 text-xs text-muted-foreground"><Link href="/orders" className="hover:text-primary" data-testid="link-back-order-list">الطلبات</Link><ChevronLeft size={13}/><span>{o.orderNumber}</span></div><PageHeader eyebrow={`طلب ${o.orderNumber}`} title={o.customerName} description={`${fmtDate(o.orderDate)} · ${o.customerPhone}`} action={<Status value={o.status}/>}/><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><StatCard label="السعر المحصل" value={<Money value={o.totalSelling}/>} sub="إجمالي فاتورة العميل" icon={Receipt}/><StatCard label="تكلفة SHEIN الفعلية" value={<Money value={o.totalSheinCost}/>} sub="تكلفة الشراء" icon={ShoppingCart} tone="gold"/><StatCard label="العمولة" value={<Money value={o.totalCommission}/>} sub="حصة الشراكة" icon={TrendingUp} tone="mint"/><StatCard label="المتبقي من العميل" value={<Money value={o.remaining}/>} sub={`${o.totalPaid > 0 ? "تم تحصيل دفعة" : "لم تُسجل دفعة"}`} icon={WalletCards} tone="coral"/></div><div className="mt-5 grid gap-5 xl:grid-cols-[1.5fr_.65fr]"><SectionCard title={`المنتجات · ${o.items.length}`}><div className="divide-y divide-border/70">{safeArray(o.items).map((item) => <div key={item.id} className="p-5" data-testid={`row-order-item-${item.id}`}><div className="flex flex-col justify-between gap-4 lg:flex-row"><div className="flex gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-secondary/20 text-primary"><Package size={18}/></span><div><strong className="block text-sm">{item.name}</strong><small className="mt-1 block text-xs text-muted-foreground">كمية {item.quantity} · سعر محصل <Money value={item.totalSelling}/></small><small className="mt-1 block text-xs text-muted-foreground">SHEIN فعلي <Money value={item.totalSheinCost}/> · عمولة <Money value={item.totalCommission}/></small></div></div><div className="flex flex-wrap gap-2"><Select value={item.productStatus} onChange={(e) => saveStatus(item.id, e.target.value, item.deliveryStatus)} aria-label="حالة المنتج" className="min-h-9 w-36 text-xs"><option value="pending">بانتظار الشراء</option><option value="ordered">تم الشراء</option><option value="arrived">وصل</option><option value="missing">ناقص</option></Select><Select value={item.deliveryStatus} onChange={(e) => saveStatus(item.id, item.productStatus, e.target.value)} aria-label="حالة التسليم" className="min-h-9 w-36 text-xs"><option value="pending">لم يُسلّم</option><option value="ready">جاهز للتسليم</option><option value="delivered">تم التسليم</option></Select></div></div></div>)}</div></SectionCard><div className="space-y-5"><SectionCard title="تفاصيل العميل"><div className="space-y-4 p-5 text-sm"><div className="flex items-center gap-3"><UserRound size={17} className="text-accent"/><Link href={`/customers/${o.customerId}`} className="font-bold text-primary hover:underline" data-testid="link-order-customer">{o.customerName}</Link></div><div className="flex items-center gap-3"><Truck size={17} className="text-accent"/><span>{o.deliveryMethod === "delivery" ? o.deliveryAddress || "عنوان غير محدد" : "استلام من الشراكة"}</span></div>{o.notes && <p className="rounded-xl bg-muted p-3 text-xs leading-6">{o.notes}</p>}</div></SectionCard><SectionCard title="تقدم الطلب"><div className="p-5"><div className="mb-3 flex justify-between text-xs"><span>المنتجات الواصلة</span><strong>{o.arrivedCount} / {o.itemCount}</strong></div><div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-secondary transition-all" style={{width: `${o.itemCount ? (o.arrivedCount / o.itemCount) * 100 : 0}%`}}/></div><div className="mt-5 flex items-center gap-2 text-xs text-muted-foreground"><Check size={15} className="text-emerald-600"/> {o.deliveryStatus || "بانتظار التحديث"}</div></div></SectionCard></div></div>{flash && <Flash message={flash}/>}</AppPage>;
+  return <AppPage><div className="mb-5 flex items-center gap-2 text-xs text-muted-foreground"><Link href="/orders" className="hover:text-primary" data-testid="link-back-order-list">الطلبات</Link><ChevronLeft size={13}/><span>{o.orderNumber}</span></div><PageHeader eyebrow={`طلب ${o.orderNumber}`} title={o.customerName} description={`${fmtDate(o.orderDate)} · ${o.customerPhone}`} action={
+  <div className="flex items-center gap-2">
+    <Status value={o.status}/>
+
+    <Button
+      type="button"
+      variant="ghost"
+      onClick={handleDeleteOrder}
+      disabled={deleteOrder.isPending}
+      className="text-red-600 hover:bg-red-50 hover:text-red-700"
+    >
+      {deleteOrder.isPending ? "جاري الحذف..." : "حذف الطلب"}
+    </Button>
+  </div>
+}/><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><StatCard label="السعر المحصل" value={<Money value={o.totalSelling}/>} sub="إجمالي فاتورة العميل" icon={Receipt}/><StatCard label="تكلفة SHEIN الفعلية" value={<Money value={o.totalSheinCost}/>} sub="تكلفة الشراء" icon={ShoppingCart} tone="gold"/><StatCard label="العمولة" value={<Money value={o.totalCommission}/>} sub="حصة الشراكة" icon={TrendingUp} tone="mint"/><StatCard label="المتبقي من العميل" value={<Money value={o.remaining}/>} sub={`${o.totalPaid > 0 ? "تم تحصيل دفعة" : "لم تُسجل دفعة"}`} icon={WalletCards} tone="coral"/></div><div className="mt-5 grid gap-5 xl:grid-cols-[1.5fr_.65fr]"><SectionCard title={`المنتجات · ${o.items.length}`}>
+  <div className="divide-y divide-border/70">{safeArray(o.items).map((item) => <div key={item.id} className="p-5" data-testid={`row-order-item-${item.id}`}><div className="flex flex-col justify-between gap-4 lg:flex-row"><div className="flex gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-secondary/20 text-primary"><Package size={18}/></span><div><strong className="block text-sm">{item.name}</strong><small className="mt-1 block text-xs text-muted-foreground">كمية {item.quantity} · سعر محصل <Money value={item.totalSelling}/></small><small className="mt-1 block text-xs text-muted-foreground">SHEIN فعلي <Money value={item.totalSheinCost}/> · عمولة <Money value={item.totalCommission}/></small></div></div><div className="flex flex-wrap gap-2">
+  <Button
+    type="button"
+    variant="ghost"
+    onClick={() => openEditItem(item)}
+    className="min-h-9 gap-2 text-xs"
+  >
+    <Edit3 size={14}/>
+    تعديل
+  </Button>
+  <Button
+  type="button"
+  variant="ghost"
+  onClick={() => handleDeleteItem(item)}
+  className="min-h-9 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+>
+  حذف
+</Button>
+
+  <Select value={item.productStatus} onChange={(e) => saveStatus(item.id, e.target.value, item.deliveryStatus)} aria-label="حالة المنتج" className="min-h-9 w-36 text-xs"><option value="pending">بانتظار الشراء</option><option value="ordered">تم الشراء</option><option value="arrived">وصل</option><option value="missing">ناقص</option></Select><Select value={item.deliveryStatus} onChange={(e) => saveStatus(item.id, item.productStatus, e.target.value)} aria-label="حالة التسليم" className="min-h-9 w-36 text-xs"><option value="pending">لم يُسلّم</option><option value="ready">جاهز للتسليم</option><option value="delivered">تم التسليم</option></Select></div></div></div>)}</div></SectionCard><div className="space-y-5"><SectionCard title="تفاصيل العميل"><div className="space-y-4 p-5 text-sm"><div className="flex items-center gap-3"><UserRound size={17} className="text-accent"/><Link href={`/customers/${o.customerId}`} className="font-bold text-primary hover:underline" data-testid="link-order-customer">{o.customerName}</Link></div><div className="flex items-center gap-3"><Truck size={17} className="text-accent"/><span>{o.deliveryMethod === "delivery" ? o.deliveryAddress || "عنوان غير محدد" : "استلام من الشراكة"}</span></div>{o.notes && <p className="rounded-xl bg-muted p-3 text-xs leading-6">{o.notes}</p>}</div></SectionCard><SectionCard title="تقدم الطلب"><div className="p-5"><div className="mb-3 flex justify-between text-xs"><span>المنتجات الواصلة</span><strong>{o.arrivedCount} / {o.itemCount}</strong></div><div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-secondary transition-all" style={{width: `${o.itemCount ? (o.arrivedCount / o.itemCount) * 100 : 0}%`}}/></div><div className="mt-5 flex items-center gap-2 text-xs text-muted-foreground"><Check size={15} className="text-emerald-600"/> {o.deliveryStatus || "بانتظار التحديث"}</div></div></SectionCard></div></div><Modal
+  open={Boolean(editingItem)}
+  onClose={() => setEditingItem(null)}
+  title="تعديل القطعة"
+>
+  <div className="space-y-4">
+    <Input
+      label="اسم المنتج"
+      value={editForm.name}
+      onChange={(e) =>
+        setEditForm({ ...editForm, name: e.target.value })
+      }
+    />
+
+    <div className="grid gap-3 sm:grid-cols-3">
+      <Input
+        label="الكمية"
+        type="number"
+        min="1"
+        value={editForm.quantity}
+        onChange={(e) =>
+          setEditForm({
+            ...editForm,
+            quantity: Number(e.target.value),
+          })
+        }
+      />
+
+      <Input
+        label="السعر المحصل"
+        type="number"
+        min="0"
+        step="0.01"
+        value={editForm.sellingPrice}
+        onChange={(e) =>
+          setEditForm({
+            ...editForm,
+            sellingPrice: Number(e.target.value),
+          })
+        }
+      />
+
+      <Input
+        label="العمولة"
+        type="number"
+        min="0"
+        step="0.01"
+        value={editForm.commission}
+        onChange={(e) =>
+          setEditForm({
+            ...editForm,
+            commission: Number(e.target.value),
+          })
+        }
+      />
+    </div>
+
+    <Input
+      label="رابط المنتج"
+      value={editForm.productUrl}
+      placeholder="https://..."
+      onChange={(e) =>
+        setEditForm({ ...editForm, productUrl: e.target.value })
+      }
+    />
+
+    <UploadField
+      label="صورة المنتج"
+      value={editForm.imagePath}
+      onChange={(path) =>
+        setEditForm({ ...editForm, imagePath: path || "" })
+      }
+    />
+
+    <Textarea
+      label="ملاحظات القطعة"
+      value={editForm.notes}
+      onChange={(e) =>
+        setEditForm({ ...editForm, notes: e.target.value })
+      }
+    />
+
+    <div className="flex justify-end gap-2 pt-3">
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={() => setEditingItem(null)}
+        disabled={updateItem.isPending}
+      >
+        إلغاء
+      </Button>
+
+      <Button
+        type="button"
+        onClick={saveEditedItem}
+        disabled={
+          updateItem.isPending ||
+          !editForm.name.trim() ||
+          editForm.quantity < 1
+        }
+      >
+        {updateItem.isPending && <Spinner/>}
+        حفظ التعديلات
+      </Button>
+    </div>
+  </div>
+</Modal>{flash && <Flash message={flash}/>}</AppPage>;
 }
 
 export function PaymentsPage() {

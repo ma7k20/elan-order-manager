@@ -435,6 +435,146 @@ router.patch("/orders/:id/items/:itemId", async (req: AuthenticatedRequest, res)
   res.json({ ...(await itemDto(item)), ...(await purchaseForItem(item.id)) });
 });
 
+// إضافة قطعة جديدة إلى طلب موجود
+router.post("/orders/:id/items", async (req: AuthenticatedRequest, res): Promise<void> => {
+  const orderId = idOf(req.params.id);
+
+  if (!Number.isInteger(orderId) || orderId <= 0) {
+    res.status(400).json({ error: "رقم الطلب غير صحيح" });
+    return;
+  }
+
+  const [order] = await db
+    .select()
+    .from(ordersTable)
+    .where(eq(ordersTable.id, orderId))
+    .limit(1);
+
+  if (!order) {
+    res.status(404).json({ error: "الطلب غير موجود" });
+    return;
+  }
+
+  const {
+    name,
+    imagePath,
+    productUrl,
+    quantity,
+    sellingPrice,
+    commission,
+    notes,
+  } = req.body ?? {};
+
+  if (
+    !name ||
+    !String(name).trim() ||
+    !Number.isInteger(Number(quantity)) ||
+    Number(quantity) < 1 ||
+    !Number.isFinite(Number(sellingPrice)) ||
+    Number(sellingPrice) < 0 ||
+    !Number.isFinite(Number(commission ?? 0)) ||
+    Number(commission ?? 0) < 0
+  ) {
+    res.status(400).json({ error: "بيانات القطعة غير صحيحة" });
+    return;
+  }
+
+  const [item] = await db
+    .insert(orderItemsTable)
+    .values({
+      orderId,
+      customerId: order.customerId,
+      name: String(name).trim(),
+      imagePath: imagePath || null,
+      productUrl: productUrl || null,
+      quantity: Number(quantity),
+      sellingPrice: Number(sellingPrice),
+      commission: Number(commission ?? 0),
+      sheinCost: 0,
+      notes: notes || null,
+      createdBy: req.userId,
+    })
+    .returning();
+
+  await audit(
+    req.userId,
+    "created",
+    "order_item",
+    item.id,
+    `تمت إضافة المنتج ${item.name} إلى الطلب ${order.orderNumber}`
+  );
+
+  res.status(201).json({
+    ...(await itemDto(item)),
+    ...(await purchaseForItem(item.id)),
+  });
+});
+
+// حذف قطعة من طلب موجود
+router.delete("/orders/:id/items/:itemId", async (req: AuthenticatedRequest, res): Promise<void> => {
+  const orderId = idOf(req.params.id);
+  const itemId = idOf(req.params.itemId);
+
+  if (
+    !Number.isInteger(orderId) ||
+    !Number.isInteger(itemId) ||
+    orderId <= 0 ||
+    itemId <= 0
+  ) {
+    res.status(400).json({ error: "بيانات القطعة غير صحيحة" });
+    return;
+  }
+
+  const [item] = await db
+    .select()
+    .from(orderItemsTable)
+    .where(
+      and(
+        eq(orderItemsTable.id, itemId),
+        eq(orderItemsTable.orderId, orderId)
+      )
+    )
+    .limit(1);
+
+  if (!item) {
+    res.status(404).json({ error: "القطعة غير موجودة" });
+    return;
+  }
+
+  // منع حذف قطعة مرتبطة بفاتورة شراء SHEIN
+  const linkedPurchase = await db
+    .select({ id: purchaseItemsTable.id })
+    .from(purchaseItemsTable)
+    .where(eq(purchaseItemsTable.itemId, itemId))
+    .limit(1);
+
+  if (linkedPurchase.length) {
+    res.status(409).json({
+      error: "لا يمكن حذف هذه القطعة لأنها مرتبطة بفاتورة شراء SHEIN.",
+    });
+    return;
+  }
+
+  await db
+    .delete(orderItemsTable)
+    .where(
+      and(
+        eq(orderItemsTable.id, itemId),
+        eq(orderItemsTable.orderId, orderId)
+      )
+    );
+
+  await audit(
+    req.userId,
+    "deleted",
+    "order_item",
+    itemId,
+    `تم حذف المنتج ${item.name} من الطلب`
+  );
+
+  res.sendStatus(204);
+});
+
 router.get("/payments", async (req, res): Promise<void> => {
   const query = ListPaymentsQueryParams.safeParse(req.query);
   const search = query.success ? query.data.search : undefined;
