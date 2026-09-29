@@ -25,9 +25,11 @@
     "google-auth-library": "^11.0.2",
     "http-proxy-middleware": "^4.2.0",
     "pino": "^9.14.0",
-    "pino-http": "^10.5.0"
+    "pino-http": "^10.5.0",
+    "shein-cart": "^0.1.1"
   },
   "devDependencies": {
+    "@esbuild/win32-x64": "0.27.3",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",

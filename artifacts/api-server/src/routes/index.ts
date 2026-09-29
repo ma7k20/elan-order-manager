@@ -6,6 +6,7 @@ import authRouter from "./auth";
 import aiRouter from "./ai";
 import whatsappRouter from "./whatsapp";
 import mobileRouter from "./mobile";
+import sheinRouter from "./shein";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(mobileRouter);
 router.use(aiRouter);
 router.use(businessRouter);
 router.use(storageRouter);
+router.use(sheinRouter);
 
 export default router;
