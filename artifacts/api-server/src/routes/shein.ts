@@ -148,7 +148,12 @@ router.post("/shein/import-cart", async (req, res) => {
         size: attributes[1] || "",
 
         image: item.image || "",
-        productUrl: item.url || "",
+        productUrl: item.url
+  ? item.url.replace(
+      /^https?:\/\/(?:www\.)?shein\.com\//i,
+      "https://il.shein.com/"
+    )
+  : "",
 
         quantity: 1,
 
